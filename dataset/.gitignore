@@ -1,0 +1,6 @@
+*.png
+*.wav
+wav/
+spec/
+*.tgz
+*.zip
