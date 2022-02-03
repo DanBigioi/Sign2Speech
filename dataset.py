@@ -47,6 +47,12 @@ def load_sign_alphabet(
     """
     poses, labels = read_poses_json(alphabet_dataset_path)
     print(f"[*] Loaded {poses.shape[0]} pose samples.")
+
+    speech_gt = []
+    for path in os.listdir(speech_gt_path):
+        if os.path.isfile(path):
+            speech_gt.append(path)
+
     if not test:
         train_pct = 0.7
         print("[*] Splitting 70/30...")

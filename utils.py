@@ -4,7 +4,7 @@ import json
 from sklearn import preprocessing
 
 
-def read_keypoints_json(json_path):
+def read_poses_json(json_path):
 
     with open(json_path) as f:
         data = json.load(f)
