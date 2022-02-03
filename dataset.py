@@ -12,24 +12,27 @@ import os
 from torch.utils.data import Dataset, IterableDataset, DataLoader
 from utils import read_poses_json
 from typing import Tuple, Union
+from PIL import Image
 
 
 class SignAlphabetDataset(Dataset):
-    def __init__(self, poses, labels, speech=None):
+    def __init__(self, poses, labels, spectograms=None):
         self.poses = poses
         self.labels = labels
-        self.spectograms = speech
+        self.spectograms = spectograms
 
     def __len__(self):
         return len(self.poses)
 
     def __getitem__(self, index) -> Tuple:
-        if self.speech is not None:
-            mfcc = self.speech[index]
+        # TODO: Move things to CUDA?
+        # TODO: Image to tensor (load the image with torchvision?)
+        if self.spectograms is not None:
+            specto = Image.open(self.spectograms[index])
             hand_poses = self.poses[index]
             label = self.labels[index]
 
-            return mfcc, hand_poses, label
+            return specto, hand_poses, label
 
         else:
             hand_poses = self.poses[index]
