@@ -1,6 +1,7 @@
 import json
 import numpy as np
 from sklearn import preprocessing
+import torch
 
 def readKeyPointJson(jsFile):
 
@@ -35,3 +36,20 @@ def loadLandmarks(filepath):
     landmarks = (np.load(filepath))
     print('landmarks shape = '+str(landmarks.shape))
     return landmarks
+
+def save_checkpoint(state, filename="my_checkpointTest.pt"):
+    print("=> Saving checkpoint")
+    torch.save(state, filename)
+
+def load_checkpoint(checkpoint, model, optimizer):
+    print("=> Loading checkpoint")
+    model.load_state_dict(checkpoint["state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer"])
+
+
+
+keypoint, label = readKeyPointJson('DataSet.json')
+
+print(keypoint.shape)
+print(label.shape)
+print(label)

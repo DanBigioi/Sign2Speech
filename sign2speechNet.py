@@ -47,7 +47,7 @@ class sign2speechNet(nn.Module):
 
 ######################### Training Set Up #################################
 
-def trainAudio2Landmark(num_epochs = 50000, learning_rate = 0.001, load_model = False, input_size = 89, hidden_size = 128, num_layers = 4, bidirectional = True):
+def trainAudio2Landmark(num_epochs = 50000, learning_rate = 0.001, load_model = False, input_size = 63, hidden_size = 128, num_layers = 4, bidirectional = True):
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     #Tensorboard
