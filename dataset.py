@@ -10,10 +10,10 @@ import torch
 import os
 
 from torch.utils.data import Dataset, IterableDataset, DataLoader
+from torchvision.io import read_image
 from typing import Tuple, Union, Dict
 from sklearn import preprocessing
 from utils import read_poses_json
-from PIL import Image
 
 
 class SignAlphabetDataset(Dataset):
@@ -29,7 +29,7 @@ class SignAlphabetDataset(Dataset):
         # TODO: Move things to CUDA?
         # TODO: Image to tensor (load the image with torchvision?)
         if self.spectograms is not None:
-            specto = Image.open(self.spectograms[index])
+            specto = read_image(self.spectograms[index])
             hand_poses = self.poses[index]
             label = self.labels[index]
 
