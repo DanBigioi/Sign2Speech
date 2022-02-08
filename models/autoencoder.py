@@ -40,23 +40,20 @@ class VAE(pl.LightningModule):
         return optimizer
 
     def training_step(self, train_batch, batch_idx):
-        print("TRAINING STEP")
-        x, y = train_batch
-        print(x, y)
+        x, y, l = train_batch
         x = x.view(x.size(0), -1)
         z = self.encoder(x)
         x_hat = self.decoder(z)
-        loss = F.mse_loss(x_hat, x)
+        loss = F.mse_loss(x_hat, y)
         self.log('train_loss', loss)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        print(type(val_batch))
-        x, y = val_batch
+        x, y, l = val_batch
         x = x .view(x.size(0), -1)
         z = self.encoder(x)
         x_hat = self.decoder(z)
-        loss = F.mse_loss(x_hat, x)
+        loss = F.mse_loss(x_hat, y)
         self.log('val_loss', loss)
         return loss
 

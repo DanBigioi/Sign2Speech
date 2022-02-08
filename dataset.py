@@ -6,40 +6,37 @@
 
 
 import numpy as np
+import torch
 import os
 
 from torch.utils.data import Dataset, DataLoader, random_split
+from torchvision.transforms import ToTensor, ConvertImageDtype
 from torchvision.io import read_image
 from typing import Tuple, Union, Dict
 from sklearn import preprocessing
 
 
 class SignAlphabetDataset(Dataset):
-    def __init__(self, poses, labels, spectograms=None):
+    def __init__(self, poses, labels, spectograms, transform=ConvertImageDtype(torch.float32)):
         self.poses = poses
         self.labels = labels
         self.spectograms = spectograms
+        self.transform = transform
 
     def __len__(self):
         assert len(self.poses) == len(self.labels) and len(self.poses) == len(self.spectograms), "Dataset items mismatch"
         return len(self.poses)
 
-    def __getitem__(self, index) -> Tuple:
-        print(index)
+    def __getitem__(self, idx) -> Tuple:
         # TODO: Move things to CUDA?
         # TODO: Image to tensor?
         # TODO: Memory pinning
-        if self.spectograms is not None:
-            specto = read_image(self.spectograms[index])
-            hand_poses = np.load(self.poses[index])
-            label = self.labels[index]
-
-            return specto, hand_poses, label
-
-        else:
-            hand_poses = np.load(self.poses[index])
-            label = self.labels[index]
-            return hand_poses, label
+        specto = read_image(self.spectograms[idx])
+        if self.transform:
+            specto = self.transform(specto)
+        hand_pose = np.load(self.poses[idx])
+        label = self.labels[idx]
+        return specto, hand_pose, label
 
 
 def parse_dataset(root: str, verbose = False) -> Dict[str, str]:
