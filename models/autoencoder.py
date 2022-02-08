@@ -20,6 +20,7 @@ import torch
 
 
 class VAE(pl.LightningModule):
+    # TODO: The variational part of VAE
     def __init__(self, input_dim: int = 63, latent_dim: int = 32):
         super().__init__()
         self.encoder = nn.Sequential(
@@ -51,7 +52,9 @@ class VAE(pl.LightningModule):
     def validation_step(self, val_batch, batch_idx):
         x, y, l = val_batch
         x = x .view(x.size(0), -1)
+        print(x.shape)
         z = self.encoder(x)
+        print(z.shape)
         x_hat = self.decoder(z)
         loss = F.mse_loss(x_hat, y)
         self.log('val_loss', loss)
