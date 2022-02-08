@@ -16,21 +16,23 @@ from typing import Tuple, Union, Dict
 from sklearn import preprocessing
 
 
-class SignAlphabetDataset(Dataset):
-    def __init__(self, poses, labels, spectograms, transform=ConvertImageDtype(torch.float32)):
+class SignAlphabetSpectogramDataset(Dataset):
+    def __init__(
+        self, poses, labels, spectograms, transform=ConvertImageDtype(torch.float32)
+    ):
         self.poses = poses
         self.labels = labels
         self.spectograms = spectograms
         self.transform = transform
 
     def __len__(self):
-        assert len(self.poses) == len(self.labels) and len(self.poses) == len(self.spectograms), "Dataset items mismatch"
+        assert len(self.poses) == len(self.labels) and len(self.poses) == len(
+            self.spectograms
+        ), "Dataset items mismatch"
         return len(self.poses)
 
     def __getitem__(self, idx) -> Tuple:
-        # TODO: Move things to CUDA?
-        # TODO: Image to tensor?
-        # TODO: Memory pinning
+        # TODO: Memory pinning?
         specto = read_image(self.spectograms[idx])
         if self.transform:
             specto = self.transform(specto)
@@ -39,7 +41,27 @@ class SignAlphabetDataset(Dataset):
         return specto, hand_pose, label
 
 
-def parse_dataset(root: str, verbose = False) -> Dict[str, str]:
+class SignAlphabetMFCCDataset(Dataset):
+    def __init__(self, poses, labels, mfccs):
+        self.poses = poses
+        self.labels = labels
+        self.mfccs = mfccs
+
+    def __len__(self):
+        assert len(self.poses) == len(self.labels) and len(self.poses) == len(
+            self.mfccs
+        ), "Dataset items mismatch"
+        return len(self.poses)
+
+    def __getitem__(self, idx) -> Tuple:
+        # TODO: Memory pinning?
+        hand_pose = np.load(self.poses[idx])
+        mfccs = self.mfccs[idx]
+        label = self.labels[idx]
+        return mfccs, hand_pose, label
+
+
+def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
     """
     Parses a dataset root directory and returns a dictionary with key "alphabet label" and value
     "list of hand poses".
@@ -73,7 +95,7 @@ def load_sign_alphabet(
     loaders.
     If testing, a different dataset file is assumed and no splitting will be done.
     """
-    samples = parse_dataset(alphabet_dataset_path)
+    samples = parse_numpy_dataset(alphabet_dataset_path)
     le = preprocessing.LabelEncoder()
     label_codes = le.fit_transform(np.array(list(samples.keys())))
 
@@ -81,20 +103,20 @@ def load_sign_alphabet(
     for path in os.listdir(speech_gt_path):
         full_path = os.path.join(speech_gt_path, path)
         if os.path.isfile(full_path):
-            speech_gt[path.split('.')[0].upper()] = full_path
+            speech_gt[path.split(".")[0].upper()] = full_path
     assert len(speech_gt) > 0, "Speech ground truth not loaded"
 
     poses, labels, spectograms = [], [], []
     for i, label in enumerate(samples.keys()):
         poses += samples[label]
-        labels += [label_codes[i]]*len(samples[label])
-        spectograms += [speech_gt[label.upper()]]*len(samples[label])
-    dataset = SignAlphabetDataset(poses, labels, spectograms)
+        labels += [label_codes[i]] * len(samples[label])
+        spectograms += [speech_gt[label.upper()]] * len(samples[label])
+    dataset = SignAlphabetSpectogramDataset(poses, labels, spectograms)
 
     if not test:
         print("[*] Splitting 70/30...")
-        train_sz = int(0.7*len(dataset))
-        train, val = random_split(dataset, [train_sz, len(dataset)-train_sz])
+        train_sz = int(0.7 * len(dataset))
+        train, val = random_split(dataset, [train_sz, len(dataset) - train_sz])
         print(f"-> {len(train)} training samples.")
         print(f"-> {len(val)} validation samples.")
 
@@ -117,7 +139,7 @@ def load_sign_alphabet(
         poses, labels = [], []
         for i, label in enumerate(samples.keys()):
             poses.append(samples[label])
-            labels.append([label_codes[i]]*len(samples[label]))
+            labels.append([label_codes[i]] * len(samples[label]))
 
         return DataLoader(
             dataset,
@@ -126,4 +148,3 @@ def load_sign_alphabet(
             shuffle=False,
             pin_memory=True,
         )
-

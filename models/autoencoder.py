@@ -24,13 +24,14 @@ class VAE(pl.LightningModule):
     def __init__(self, input_dim: int = 63, latent_dim: int = 32):
         super().__init__()
         self.encoder = nn.Sequential(
-                nn.Linear(input_dim, 64),
-                nn.Linear(64, latent_dim))
+            nn.Linear(input_dim, 64), nn.Linear(64, latent_dim)
+        )
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(16,6,kernel_size=5),
+            nn.ConvTranspose2d(16, 6, kernel_size=5),
             nn.ReLU(),
-            nn.ConvTranspose2d(6,3,kernel_size=5),
-            nn.ReLU())
+            nn.ConvTranspose2d(6, 3, kernel_size=5),
+            nn.ReLU(),
+        )
 
     def forward(self, x):
         embedding = self.encoder(x)
@@ -46,18 +47,18 @@ class VAE(pl.LightningModule):
         z = self.encoder(x)
         x_hat = self.decoder(z)
         loss = F.mse_loss(x_hat, y)
-        self.log('train_loss', loss)
+        self.log("train_loss", loss)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
         x, y, l = val_batch
-        x = x .view(x.size(0), -1)
+        x = x.view(x.size(0), -1)
         print(x.shape)
         z = self.encoder(x)
         print(z.shape)
         x_hat = self.decoder(z)
         loss = F.mse_loss(x_hat, y)
-        self.log('val_loss', loss)
+        self.log("val_loss", loss)
         return loss
 
     def backward(self, trainer, loss, optimizer, optimizer_idx):
