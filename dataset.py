@@ -41,14 +41,15 @@ class SignAlphabetDataset(Dataset):
             return hand_poses, label
 
 
-def parse_dataset(root: str) -> Dict[str, str]:
+def parse_dataset(root: str, verbose = False) -> Dict[str, str]:
     """
     Parses a dataset root directory and returns a dictionary with key "alphabet label" and value
     "list of hand poses".
     """
     samples = dict()
+    n_samples = 0
     for dirname in os.listdir(root):
-        if not os.path.isdir(dirname):
+        if not os.path.isdir(os.path.join(root, dirname)):
             continue
         samples[dirname] = []
         for root_dir, _, files in os.walk(os.path.join(root, dirname)):
@@ -57,7 +58,11 @@ def parse_dataset(root: str) -> Dict[str, str]:
                 if os.path.isfile(file_path) and file_path.endswith(".npy"):
                     samples[dirname].append(file_path)
         assert len(samples[dirname]) > 0, f"No samples found for label '{dirname}'"
+        if verbose:
+            print(f"-> Loaded {len(samples[dirname])} samples for label '{dirname}'")
+        n_samples += len(samples[dirname])
     assert len(list(samples.keys())) > 0, f"Empty dataset"
+    print(f"[*] Loaded {n_samples} pose samples.")
     return samples
 
 
@@ -70,7 +75,8 @@ def load_sign_alphabet(
     If testing, a different dataset file is assumed and no splitting will be done.
     """
     samples = parse_dataset(alphabet_dataset_path)
-    print(f"[*] Loaded {len(list(samples.values()))} pose samples.")
+    le = preprocessing.LabelEncoder()
+    label_codes = le.fit_transform(np.array(list(samples.keys())))
 
     speech_gt = []
     for path in os.listdir(speech_gt_path):
@@ -83,27 +89,21 @@ def load_sign_alphabet(
 
         # Split the samples with their labels into train and val
         train_poses, train_labels, val_poses, val_labels = [], [], [], []
-        for label in samples.keys():
+        for i, label in enumerate(samples.keys()):
             count = int(train_pct*len(samples[label]))
             train_poses.append(samples[label][:count])
-            train_labels.append([label]*count)
+            train_labels.append([label_codes[i]]*count)
             val_poses.append(samples[label][count:])
-            val_labels.append([label]*(len(samples[label])-count))
+            val_labels.append([label_codes[i]]*(len(samples[label])-count))
 
-        le = preprocessing.LabelEncoder()
-        train_labels = np.asarray(train_labels)
-        train_labels = le.fit_transform(train_labels)
-        val_labels = np.asarray(val_labels)
-        val_labels = le.fit_transform(val_labels)
-
-        train_loader = torch.utils.data.DataLoader(
+        train_loader = DataLoader(
             SignAlphabetDataset(train_poses, train_labels, speech_gt),
             num_workers=0,
             batch_size=32,
             shuffle=True,
             pin_memory=True,
         )
-        val_loader = torch.utils.data.DataLoader(
+        val_loader = DataLoader(
             SignAlphabetDataset(val_poses, val_labels, speech_gt),
             num_workers=0,
             batch_size=32,
@@ -111,16 +111,11 @@ def load_sign_alphabet(
             pin_memory=True,
         )
         return train_loader, val_loader
-        return None, None
     else:
         poses, labels = [], []
-        for label in samples.keys():
+        for i, label in enumerate(samples.keys()):
             poses.append(samples[label])
-            labels.append([label]*len(samples[label]))
-
-        le = preprocessing.LabelEncoder()
-        labels = np.asarray(labels)
-        labels = le.fit_transform(labels)
+            labels.append([label_codes[i]]*len(samples[label]))
 
         return DataLoader(
             SignAlphabetDataset(poses, labels, speech_gt),
