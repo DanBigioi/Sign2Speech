@@ -10,8 +10,9 @@ import torch
 import os
 
 from torch.utils.data import Dataset, IterableDataset, DataLoader
+from typing import Tuple, Union, Dict
+from sklearn import preprocessing
 from utils import read_poses_json
-from typing import Tuple, Union
 from PIL import Image
 
 
@@ -40,6 +41,26 @@ class SignAlphabetDataset(Dataset):
             return hand_poses, label
 
 
+def parse_dataset(root: str) -> Dict[str, str]:
+    """
+    Parses a dataset root directory and returns a dictionary with key "alphabet label" and value
+    "list of hand poses".
+    """
+    samples = dict()
+    for dirname in os.listdir(root):
+        if not os.path.isdir(dirname):
+            continue
+        samples[dirname] = []
+        for root_dir, _, files in os.walk(os.path.join(root, dirname)):
+            for file_name in files:
+                file_path = os.path.join(root_dir, file_name)
+                if os.path.isfile(file_path) and file_path.endswith(".npy"):
+                    samples[dirname].append(file_path)
+        assert len(samples[dirname]) > 0, f"No samples found for label '{dirname}'"
+    assert len(list(samples.keys())) > 0, f"Empty dataset"
+    return samples
+
+
 def load_sign_alphabet(
     alphabet_dataset_path, speech_gt_path, test=False
 ) -> Union[DataLoader, Tuple[DataLoader, DataLoader]]:
@@ -48,8 +69,8 @@ def load_sign_alphabet(
     loaders.
     If testing, a different dataset file is assumed and no splitting will be done.
     """
-    poses, labels = read_poses_json(alphabet_dataset_path)
-    print(f"[*] Loaded {poses.shape[0]} pose samples.")
+    samples = parse_dataset(alphabet_dataset_path)
+    print(f"[*] Loaded {len(list(samples.values()))} pose samples.")
 
     speech_gt = []
     for path in os.listdir(speech_gt_path):
@@ -59,22 +80,21 @@ def load_sign_alphabet(
     if not test:
         train_pct = 0.7
         print("[*] Splitting 70/30...")
-        samples = dict()
-        for pose, label in zip(poses, labels):
-            if label not in samples:
-                samples[label] = pose
-            else:
-                samples[label].append(pose)
 
-        # TODO: Just change the dataset constructor so it just accepts a dict...
         # Split the samples with their labels into train and val
         train_poses, train_labels, val_poses, val_labels = [], [], [], []
         for label in samples.keys():
-            count = train_pct*len(samples[label])
+            count = int(train_pct*len(samples[label]))
             train_poses.append(samples[label][:count])
             train_labels.append([label]*count)
             val_poses.append(samples[label][count:])
-            val_labels.append([label]*len(samples[label]-count))
+            val_labels.append([label]*(len(samples[label])-count))
+
+        le = preprocessing.LabelEncoder()
+        train_labels = np.asarray(train_labels)
+        train_labels = le.fit_transform(train_labels)
+        val_labels = np.asarray(val_labels)
+        val_labels = le.fit_transform(val_labels)
 
         train_loader = torch.utils.data.DataLoader(
             SignAlphabetDataset(train_poses, train_labels, speech_gt),
@@ -93,6 +113,15 @@ def load_sign_alphabet(
         return train_loader, val_loader
         return None, None
     else:
+        poses, labels = [], []
+        for label in samples.keys():
+            poses.append(samples[label])
+            labels.append([label]*len(samples[label]))
+
+        le = preprocessing.LabelEncoder()
+        labels = np.asarray(labels)
+        labels = le.fit_transform(labels)
+
         return DataLoader(
             SignAlphabetDataset(poses, labels, speech_gt),
             num_workers=0,
