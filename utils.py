@@ -1,37 +1,41 @@
-import json
 import numpy as np
+import json
+
 from sklearn import preprocessing
 
-def readKeyPointJson(jsFile):
 
-    f = open(jsFile)
-    data = json.load(f)
-    keypoint_array = []
-    label_array = []
-    for i in data['pose']:
-        keypoint_array.append(i)
+def read_poses_json(json_path):
 
-    for i in data['label']:
-        label_array.append(i[1])
+    with open(json_path) as f:
+        data = json.load(f)
+        keypoint_array = []
+        label_array = []
+        for i in data["pose"]:
+            keypoint_array.append(i)
 
-    #Encoding the labels so that pytorch is able to trasnform them into tensors
-    label_array = np.asarray(label_array)
-    le = preprocessing.LabelEncoder()
-    label_array = le.fit_transform(label_array)
+        for i in data["label"]:
+            label_array.append(i[1])
 
-    keypoint_array = np.asarray(keypoint_array)
-    keypoint_array = np.reshape(keypoint_array, (320, 63))
+        # Encoding the labels so that pytorch is able to trasnform them into tensors
+        label_array = np.asarray(label_array)
+        le = preprocessing.LabelEncoder()
+        label_array = le.fit_transform(label_array)
 
-    f.close()
+        keypoint_array = np.asarray(keypoint_array)
+        keypoint_array = np.reshape(
+            keypoint_array, (320, 63)
+        )  # TODO: Why are those values hard coded here?
 
     return keypoint_array, label_array
 
-def loadMFCC(filepath):
-    mfcc = (np.load(filepath))
-    print('mfcc shape = '+str(mfcc.shape))
+
+def load_mfcc(filepath):
+    mfcc = np.load(filepath)
+    print("mfcc shape = " + str(mfcc.shape))
     return mfcc
 
-def loadLandmarks(filepath):
-    landmarks = (np.load(filepath))
-    print('landmarks shape = '+str(landmarks.shape))
+
+def load_landmarks(filepath):
+    landmarks = np.load(filepath)
+    print("landmarks shape = " + str(landmarks.shape))
     return landmarks
