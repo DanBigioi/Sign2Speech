@@ -21,21 +21,23 @@ class SignAlphabetDataset(Dataset):
         self.spectograms = spectograms
 
     def __len__(self):
+        assert len(self.poses) == len(self.labels) and len(self.poses) == len(self.spectograms), "Dataset items mismatch"
         return len(self.poses)
 
     def __getitem__(self, index) -> Tuple:
         print(index)
         # TODO: Move things to CUDA?
         # TODO: Image to tensor?
+        # TODO: Memory pinning
         if self.spectograms is not None:
             specto = read_image(self.spectograms[index])
-            hand_poses = self.poses[index]
+            hand_poses = np.load(self.poses[index])
             label = self.labels[index]
 
             return specto, hand_poses, label
 
         else:
-            hand_poses = self.poses[index]
+            hand_poses = np.load(self.poses[index])
             label = self.labels[index]
             return hand_poses, label
 
@@ -50,6 +52,7 @@ def parse_dataset(root: str, verbose = False) -> Dict[str, str]:
     for dirname in os.listdir(root):
         if not os.path.isdir(os.path.join(root, dirname)):
             continue
+        assert dirname not in samples, f"{dirname} already in dict"
         samples[dirname] = []
         for root_dir, _, files in os.walk(os.path.join(root, dirname)):
             for file_name in files:
@@ -77,18 +80,19 @@ def load_sign_alphabet(
     le = preprocessing.LabelEncoder()
     label_codes = le.fit_transform(np.array(list(samples.keys())))
 
-    speech_gt = []
+    speech_gt = dict()
     for path in os.listdir(speech_gt_path):
         full_path = os.path.join(speech_gt_path, path)
         if os.path.isfile(full_path):
-            speech_gt.append(full_path)
+            speech_gt[path.split('.')[0].upper()] = full_path
     assert len(speech_gt) > 0, "Speech ground truth not loaded"
 
-    poses, labels = [], []
+    poses, labels, spectograms = [], [], []
     for i, label in enumerate(samples.keys()):
-        poses.append(samples[label])
-        labels.append([label_codes[i]]*len(samples[label]))
-    dataset = SignAlphabetDataset(poses, labels, speech_gt)
+        poses += samples[label]
+        labels += [label_codes[i]]*len(samples[label])
+        spectograms += [speech_gt[label.upper()]]*len(samples[label])
+    dataset = SignAlphabetDataset(poses, labels, spectograms)
 
     if not test:
         print("[*] Splitting 70/30...")
