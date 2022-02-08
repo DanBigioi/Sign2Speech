@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import os
 
-from torch.utils.data import Dataset, IterableDataset, DataLoader
+from torch.utils.data import Dataset, IterableDataset, DataLoader, random_split
 from torchvision.io import read_image
 from typing import Tuple, Union, Dict
 from sklearn import preprocessing
@@ -26,6 +26,7 @@ class SignAlphabetDataset(Dataset):
         return len(self.poses)
 
     def __getitem__(self, index) -> Tuple:
+        print(index)
         # TODO: Move things to CUDA?
         # TODO: Image to tensor (load the image with torchvision?)
         if self.spectograms is not None:
@@ -67,7 +68,7 @@ def parse_dataset(root: str, verbose = False) -> Dict[str, str]:
 
 
 def load_sign_alphabet(
-    alphabet_dataset_path, speech_gt_path, test=False
+    alphabet_dataset_path, speech_gt_path, batch_size=32, train_pct=0.7, test=False
 ) -> Union[DataLoader, Tuple[DataLoader, DataLoader]]:
     """
     Load a Sign Alphabet dataset, split into training and validation or test sets, and return data
@@ -80,33 +81,33 @@ def load_sign_alphabet(
 
     speech_gt = []
     for path in os.listdir(speech_gt_path):
-        if os.path.isfile(path):
-            speech_gt.append(path)
+        full_path = os.path.join(speech_gt_path, path)
+        if os.path.isfile(full_path):
+            speech_gt.append(full_path)
+    assert len(speech_gt) > 0, "Speech ground truth not loaded"
+
+    poses, labels = [], []
+    for i, label in enumerate(samples.keys()):
+        poses.append(samples[label])
+        labels.append([label_codes[i]]*len(samples[label]))
+    dataset = SignAlphabetDataset(poses, labels, speech_gt)
 
     if not test:
-        train_pct = 0.7
         print("[*] Splitting 70/30...")
-
-        # Split the samples with their labels into train and val
-        train_poses, train_labels, val_poses, val_labels = [], [], [], []
-        for i, label in enumerate(samples.keys()):
-            count = int(train_pct*len(samples[label]))
-            train_poses.append(samples[label][:count])
-            train_labels.append([label_codes[i]]*count)
-            val_poses.append(samples[label][count:])
-            val_labels.append([label_codes[i]]*(len(samples[label])-count))
+        train_sz = int(0.7*len(dataset))
+        train, val = random_split(dataset, [train_sz, len(dataset)-train_sz])
 
         train_loader = DataLoader(
-            SignAlphabetDataset(train_poses, train_labels, speech_gt),
+            train,
             num_workers=0,
-            batch_size=32,
+            batch_size=batch_size,
             shuffle=True,
             pin_memory=True,
         )
         val_loader = DataLoader(
-            SignAlphabetDataset(val_poses, val_labels, speech_gt),
+            val,
             num_workers=0,
-            batch_size=32,
+            batch_size=batch_size,
             shuffle=False,
             pin_memory=True,
         )
@@ -118,9 +119,9 @@ def load_sign_alphabet(
             labels.append([label_codes[i]]*len(samples[label]))
 
         return DataLoader(
-            SignAlphabetDataset(poses, labels, speech_gt),
+            dataset,
             num_workers=0,
-            batch_size=32,
+            batch_size=batch_size,
             shuffle=False,
             pin_memory=True,
         )

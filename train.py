@@ -17,7 +17,8 @@ import pytorch_lightning as pl
 
 
 def train():
-    train_loader, val_loader = load_sign_alphabet("dataset/train_poses/", "dataset/spec/")
+    train_loader, val_loader = load_sign_alphabet("dataset/train_poses/", "dataset/spec/",
+            batch_size=2)
     model = VAE()
     trainer = pl.Trainer(gpus=1)
     trainer.fit(model, train_loader, val_loader)
