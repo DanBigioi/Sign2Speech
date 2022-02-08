@@ -6,14 +6,12 @@
 
 
 import numpy as np
-import torch
 import os
 
-from torch.utils.data import Dataset, IterableDataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision.io import read_image
 from typing import Tuple, Union, Dict
 from sklearn import preprocessing
-from utils import read_poses_json
 
 
 class SignAlphabetDataset(Dataset):
@@ -28,7 +26,7 @@ class SignAlphabetDataset(Dataset):
     def __getitem__(self, index) -> Tuple:
         print(index)
         # TODO: Move things to CUDA?
-        # TODO: Image to tensor (load the image with torchvision?)
+        # TODO: Image to tensor?
         if self.spectograms is not None:
             specto = read_image(self.spectograms[index])
             hand_poses = self.poses[index]
@@ -96,6 +94,8 @@ def load_sign_alphabet(
         print("[*] Splitting 70/30...")
         train_sz = int(0.7*len(dataset))
         train, val = random_split(dataset, [train_sz, len(dataset)-train_sz])
+        print(f"-> {len(train)} training samples.")
+        print(f"-> {len(val)} validation samples.")
 
         train_loader = DataLoader(
             train,
