@@ -10,6 +10,8 @@
 Training script.
 """
 
+from pytorch_lightning.loggers import WandbLogger
+
 from dataset import load_sign_alphabet
 from models.lstm import Sign2SpeechNet
 from models.autoencoder import VAE
@@ -17,13 +19,22 @@ from models.autoencoder import VAE
 import pytorch_lightning as pl
 
 
-def train_vae():
+def train_vae(restore_from: str = None):
+    wandb_logger = WandbLogger(project="VAE Sign2Speech", log_model="all")
     train_loader, val_loader = load_sign_alphabet(
         "dataset/train_poses/", "dataset/spec/", batch_size=2
     )
-    model = VAE()
-    trainer = pl.Trainer(gpus=1)
-    trainer.fit(model, train_loader, val_loader)
+    vae = VAE()
+    # Save checkpoints to './ae_ckpt/'
+    trainer = pl.Trainer(gpus=1, default_root_dir="ae_ckpt/", logger=wandb_logger)
+    wandb_logger.watch(vae)
+    trainer.fit(vae, train_loader, val_loader, ckpt_path=restore_from)
+
+
+def eval_vae(path: str):
+    vae = VAE()
+    model = vae.load_from_checkpoint(path)
+    model.eval()
 
 
 def train_audio2landmark(
