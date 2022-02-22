@@ -10,11 +10,14 @@
 Testing script.
 """
 
+from torchvision.io import read_image, ImageReadMode, write_jpeg
+
 from dataset import load_sign_alphabet
 from models.lstm import Sign2SpeechNet
 from models.autoencoder import VAE
 
 import pytorch_lightning as pl
+import numpy as np
 import torchaudio
 import torch
 
@@ -23,9 +26,6 @@ def test_vae(model_path: str, input_path: str):
     '''
     Simple test (while waiting for a test set) to run inference on one pause.
     '''
-    import numpy as np
-    from torchvision.io import read_image, ImageReadMode, write_jpeg
-
     n_mels, n_fft, sample_rate = 64, 1024, 44100
     vae = VAE()
     model = vae.load_from_checkpoint(model_path)
