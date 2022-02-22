@@ -11,44 +11,55 @@ Training script.
 """
 
 from dataset import load_sign_alphabet
+from models.lstm import Sign2SpeechNet
 from models.autoencoder import VAE
 
 import pytorch_lightning as pl
 
 
 def train_vae():
-    train_loader, val_loader = load_sign_alphabet("dataset/train_poses/", "dataset/spec/",
-            batch_size=2)
+    train_loader, val_loader = load_sign_alphabet(
+        "dataset/train_poses/", "dataset/spec/", batch_size=2
+    )
     model = VAE()
     trainer = pl.Trainer(gpus=1)
     trainer.fit(model, train_loader, val_loader)
 
-def train_audio2landmark(num_epochs = 50000, learning_rate = 0.001, load_model = False, input_size = 89, hidden_size = 128, num_layers = 4, bidirectional = True):
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #Tensorboard
+def train_audio2landmark(
+    num_epochs=50000,
+    learning_rate=0.001,
+    load_model=False,
+    input_size=89,
+    hidden_size=128,
+    num_layers=4,
+    bidirectional=True,
+):
+    # Tensorboard
     trainDir = "C:/Users/ionut/Documents/My Python Projects/audio2video/Train_Directory"
     os.chdir(trainDir)
-    writer = SummaryWriter('runs/loss_plot')
-    step = 0
-    valid_step = 0
-    model = sign2speechNet(input_size, hidden_size, num_layers, bidirectional).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    writer = SummaryWriter("runs/loss_plot")
+    model = Sign2SpeechNet(input_size, hidden_size, num_layers, bidirectional)
+    train_mfcc_list = np.load(
+        "C:/Users/ionut/Documents/BBC Lip Reading DataSet/TED DataSet Padded Audio and Landmarks/Padded_Audio/padded_audio_array.npy"
+    )[:17000]
+    train_landmark_list = np.load(
+        "C:/Users/ionut/Documents/BBC Lip Reading DataSet/TED DataSet Padded Audio and Landmarks/Padded_Landmarks/padded_landmark_array.npy"
+    )[:17000]
 
-    criterion = nn.MSELoss() #TODO: Use a better loss funciton than the MSE
+    train_dataloader = dataSetSeq2Seq.prepare_dataloader(
+        train_mfcc_list, train_landmark_list, 1
+    )
 
-    if load_model:
-        load_checkpoint(torch.load("my_checkpointTest.pt"), model, optimizer)
-
-    train_mfcc_list = np.load("C:/Users/ionut/Documents/BBC Lip Reading DataSet/TED DataSet Padded Audio and Landmarks/Padded_Audio/padded_audio_array.npy")[:17000]
-    train_landmark_list = np.load("C:/Users/ionut/Documents/BBC Lip Reading DataSet/TED DataSet Padded Audio and Landmarks/Padded_Landmarks/padded_landmark_array.npy")[:17000]
-
-    train_dataloader = dataSetSeq2Seq.prepare_dataloader(train_mfcc_list, train_landmark_list, 1)
-
-    validation_landmark_list = np.load("C:/Users/ionut/Documents/BBC Lip Reading DataSet/TED DataSet Padded Audio and Landmarks/Padded_Landmarks/padded_landmark_array.npy")[17000:]
-    validation_mfcc_list = np.load("C:/Users/ionut/Documents/BBC Lip Reading DataSet/TED DataSet Padded Audio and Landmarks/Padded_Audio/padded_audio_array.npy")[17000:]
-    validation_dataloader = dataSetSeq2Seq.prepare_dataloader(validation_mfcc_list, validation_landmark_list, 1)
-
+    validation_landmark_list = np.load(
+        "C:/Users/ionut/Documents/BBC Lip Reading DataSet/TED DataSet Padded Audio and Landmarks/Padded_Landmarks/padded_landmark_array.npy"
+    )[17000:]
+    validation_mfcc_list = np.load(
+        "C:/Users/ionut/Documents/BBC Lip Reading DataSet/TED DataSet Padded Audio and Landmarks/Padded_Audio/padded_audio_array.npy"
+    )[17000:]
+    validation_dataloader = dataSetSeq2Seq.prepare_dataloader(
+        validation_mfcc_list, validation_landmark_list, 1
+    )
 
 
 if __name__ == "__main__":

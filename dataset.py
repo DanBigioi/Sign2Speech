@@ -11,7 +11,7 @@ import os
 
 from torch.utils.data import Dataset, DataLoader, random_split
 from torchvision.transforms import ToTensor, ConvertImageDtype
-from torchvision.io import read_image
+from torchvision.io import read_image, ImageReadMode
 from typing import Tuple, Union, Dict
 from sklearn import preprocessing
 
@@ -33,12 +33,12 @@ class SignAlphabetSpectogramDataset(Dataset):
 
     def __getitem__(self, idx) -> Tuple:
         # TODO: Memory pinning?
-        specto = read_image(self.spectograms[idx])
+        specto = read_image(self.spectograms[idx], mode=ImageReadMode.GRAY)
         if self.transform:
             specto = self.transform(specto)
-        hand_pose = np.load(self.poses[idx])
+        hand_pose = np.load(self.poses[idx]).astype(np.float32)
         label = self.labels[idx]
-        return specto, hand_pose, label
+        return hand_pose, specto, label
 
 
 class SignAlphabetMFCCDataset(Dataset):
@@ -122,14 +122,14 @@ def load_sign_alphabet(
 
         train_loader = DataLoader(
             train,
-            num_workers=0,
+            num_workers=8,
             batch_size=batch_size,
             shuffle=True,
             pin_memory=True,
         )
         val_loader = DataLoader(
             val,
-            num_workers=0,
+            num_workers=8,
             batch_size=batch_size,
             shuffle=False,
             pin_memory=True,
@@ -143,7 +143,7 @@ def load_sign_alphabet(
 
         return DataLoader(
             dataset,
-            num_workers=0,
+            num_workers=8,
             batch_size=batch_size,
             shuffle=False,
             pin_memory=True,
