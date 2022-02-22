@@ -75,7 +75,6 @@ def generate(wav_dir, spec_dir):
         if not os.path.isfile(full_path):
             continue
         spec = wav_to_spectrogram(full_path)
-        print(spec.shape)
         save_image(spec, os.path.join(spec_dir, f"{file.split('.')[0]}.png"))
 
 
