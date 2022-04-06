@@ -19,15 +19,16 @@ import pytorch_lightning as pl
 import torch
 
 
-class VAE(pl.LightningModule):
-    # TODO: The variational part of VAE
+class AE_Deconv(pl.LightningModule):
     def __init__(self, input_dim: int = 63, latent_dim: int = 16):
         super().__init__()
         assert latent_dim < 32
         self.encoder = nn.Sequential(
             nn.Linear(input_dim, 32),
+            nn.BatchNorm1d(32),
             nn.ReLU(True),
             nn.Linear(32, latent_dim),
+            nn.BatchNorm1d(latent_dim),
             nn.ReLU(True),
             # nn.Dropout2d(p=0.2),
         )
@@ -85,7 +86,6 @@ class VAE(pl.LightningModule):
 
 
 class AE(pl.LightningModule):
-    # TODO: The variational part of VAE
     def __init__(self, input_dim: int = 63, latent_dim: int = 16):
         super().__init__()
         assert latent_dim < 32
@@ -121,7 +121,8 @@ class AE(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, verbose=True)
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler, "monitor": "train/loss"}
 
     def training_step(self, train_batch, batch_idx):
         x, y, l = train_batch
