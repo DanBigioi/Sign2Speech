@@ -14,7 +14,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 from dataset import load_sign_alphabet
 from models.lstm import Sign2SpeechNet
-from models.autoencoder import VAE
+from models.autoencoder import VAE, AE
 
 import pytorch_lightning as pl
 import torchaudio
@@ -24,9 +24,9 @@ import torch
 def train_vae(restore_from: str = None):
     wandb_logger = WandbLogger(project="VAE Sign2Speech", log_model="all")
     train_loader, val_loader = load_sign_alphabet(
-        "dataset/train_poses/", "dataset/spec/", batch_size=2
+        "dataset/train_poses/", "dataset/spec/", batch_size=64
     )
-    vae = VAE()
+    vae = AE()
     # Save checkpoints to './ae_ckpt/'
     trainer = pl.Trainer(gpus=1, default_root_dir="ae_ckpt/", logger=wandb_logger)
     wandb_logger.watch(vae)
