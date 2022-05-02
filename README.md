@@ -10,12 +10,20 @@ tarball or a zip file.
 To generate the Mel spectrogram images, set the current folder to the root of the project, download
 the archive and execute:
 ```
-tar xzf alphabet.tgz
-# Or if you're on windows you'll figure out how to unzip the archive:
-unzip alphabet.zip
+# Step 1: extract the WAV archive
+tar xzf alphabet.tgz # Or if you're on windows, unzip the ZIP in the current folder
+# Step 2: Generate the spectograms
 ./scripts/gen_alphabet_spectrograms.py data/wav/ data/spec/
-# Or something like this on windows, I guess:
-python scripts/gen_alphabet_spectrograms.py data/wav/ data/spec/
+# Or something like this on windows, I guess: python scripts/gen_alphabet_spectrograms.py data/wav/ data/spec/
 ```
 
-Or simply download [this archive](https://drive.google.com/file/d/122_gEyk1KCZVihON38b7uUtU6INjdAEw/view?usp=sharing), but I don't promise to keep it up to date!
+Alternatively, you can download [this archive](https://drive.google.com/file/d/122_gEyk1KCZVihON38b7uUtU6INjdAEw/view?usp=sharing), but I don't promise to keep it up to date!
+
+## Training / testing
+
+You only need to download the latest dataset by Frank and place it in `data/train_poses/`.
+
+Everything should be configured to work with the AutoEncoder and the Sign dataset, but you may
+override the config via the command line, or add another config (see the 
+[hydra documentation](https://hydra.cc/docs/intro)).
+To train, simply run the `train.py` script. To test, run the `test.py` script. Simple as that.
