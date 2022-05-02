@@ -1,6 +1,8 @@
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
+# Copyright © 2022 Théo Morales <theo.morales.fr@gmail.com>
 #
 # Distributed under terms of the MIT license.
 
@@ -9,21 +11,21 @@ import numpy as np
 import torch
 import os
 
-from torch.utils.data import Dataset, DataLoader, random_split
-from torchvision.transforms import ToTensor, ConvertImageDtype
+from torch.utils.data import Dataset
+from torchvision.transforms import ConvertImageDtype
 from torchvision.io import read_image, ImageReadMode
-from typing import Tuple, Union, Dict
 from sklearn import preprocessing
+from typing import Tuple, Dict
 
 
 class SignAlphabetSpectogramDataset(Dataset):
     def __init__(
-        self, poses, labels, spectograms, transform=ConvertImageDtype(torch.float32)
+        self, poses, labels, spectograms, transforms=ConvertImageDtype(torch.float32)
     ):
         self.poses = poses
         self.labels = labels
         self.spectograms = spectograms
-        self.transform = transform
+        self.transforms = transforms
 
     def __len__(self):
         assert len(self.poses) == len(self.labels) and len(self.poses) == len(
@@ -34,8 +36,8 @@ class SignAlphabetSpectogramDataset(Dataset):
     def __getitem__(self, idx) -> Tuple:
         # TODO: Memory pinning?
         specto = read_image(self.spectograms[idx], mode=ImageReadMode.GRAY)
-        if self.transform:
-            specto = self.transform(specto)
+        if self.transforms:
+            specto = self.transforms(specto)
         hand_pose = np.load(self.poses[idx]).astype(np.float32)
         label = self.labels[idx]
         return hand_pose, specto, label
@@ -88,8 +90,8 @@ def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
 
 
 def load_sign_alphabet(
-    alphabet_dataset_path, speech_gt_path, batch_size=32, train_pct=0.7, test=False
-) -> Union[DataLoader, Tuple[DataLoader, DataLoader]]:
+    alphabet_dataset_path, speech_gt_path, transforms, train=True
+) -> Dataset:
     """
     Load a Sign Alphabet dataset, split into training and validation or test sets, and return data
     loaders.
@@ -111,40 +113,5 @@ def load_sign_alphabet(
         poses += samples[label]
         labels += [label_codes[i]] * len(samples[label])
         spectograms += [speech_gt[label.upper()]] * len(samples[label])
-    dataset = SignAlphabetSpectogramDataset(poses, labels, spectograms)
 
-    if not test:
-        print("[*] Splitting 70/30...")
-        train_sz = int(0.7 * len(dataset))
-        train, val = random_split(dataset, [train_sz, len(dataset) - train_sz])
-        print(f"-> {len(train)} training samples.")
-        print(f"-> {len(val)} validation samples.")
-
-        train_loader = DataLoader(
-            train,
-            num_workers=8,
-            batch_size=batch_size,
-            shuffle=True,
-            pin_memory=True,
-        )
-        val_loader = DataLoader(
-            val,
-            num_workers=8,
-            batch_size=batch_size,
-            shuffle=False,
-            pin_memory=True,
-        )
-        return train_loader, val_loader
-    else:
-        poses, labels = [], []
-        for i, label in enumerate(samples.keys()):
-            poses.append(samples[label])
-            labels.append([label_codes[i]] * len(samples[label]))
-
-        return DataLoader(
-            dataset,
-            num_workers=8,
-            batch_size=batch_size,
-            shuffle=False,
-            pin_memory=True,
-        )
+    return SignAlphabetSpectogramDataset(poses, labels, spectograms, transforms=transforms)

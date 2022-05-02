@@ -13,10 +13,9 @@ the archive and execute:
 tar xzf alphabet.tgz
 # Or if you're on windows you'll figure out how to unzip the archive:
 unzip alphabet.zip
-cd dataset
-./gen_alphabet_spectrograms.py wav/ spec/
+./scripts/gen_alphabet_spectrograms.py data/wav/ data/spec/
 # Or something like this on windows, I guess:
-python gen_alphabet_spectrograms.py wav/ spec/
+python scripts/gen_alphabet_spectrograms.py data/wav/ data/spec/
 ```
 
 Or simply download [this archive](https://drive.google.com/file/d/122_gEyk1KCZVihON38b7uUtU6INjdAEw/view?usp=sharing), but I don't promise to keep it up to date!

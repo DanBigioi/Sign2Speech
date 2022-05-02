@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim:fenc=utf-8
 #
@@ -9,6 +8,8 @@
 """
 LSTM-based models.
 """
+
+# TODO: Refactor this into a module + component!
 
 from typing import Tuple
 from torch import nn

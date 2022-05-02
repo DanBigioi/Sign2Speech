@@ -1,0 +1,8 @@
+_target_: src.models.autoencoder_module.AELitModule
+lr: 0.001
+weight_decay: 0.0005
+
+net:
+  _target_: src.models.components.autoencoder.AE
+  input_dim: 63
+  latent_dim: 16

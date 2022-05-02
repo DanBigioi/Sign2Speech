@@ -7,11 +7,9 @@
 # Distributed under terms of the MIT license.
 
 """
-Autoencoder models.
+
 """
 
-
-from typing import Tuple
 from torch import nn
 
 import torch.nn.functional as F
@@ -19,7 +17,7 @@ import pytorch_lightning as pl
 import torch
 
 
-class AE_Deconv(pl.LightningModule):
+class AE_Deconv(nn.Module):
     def __init__(self, input_dim: int = 63, latent_dim: int = 16):
         super().__init__()
         assert latent_dim < 32
@@ -57,35 +55,8 @@ class AE_Deconv(pl.LightningModule):
         z = z.view(z.size(0), 16, 2, -1)  # Reshape to (bs, 16, 2, 2)
         return self.decoder(z)
 
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
 
-    def training_step(self, train_batch, batch_idx):
-        x, y, l = train_batch
-        z = self.encoder(x)
-        z = self.projector(z)
-        z = z.view(z.size(0), 16, 2, -1)  # Reshape to (bs, 16, 2, 2)
-        y_hat = self.decoder(z)
-        loss = F.mse_loss(y_hat, y)
-        self.log("train/loss", loss)
-        return loss
-
-    def validation_step(self, val_batch, batch_idx):
-        x, y, l = val_batch
-        z = self.encoder(x)
-        z = self.projector(z)
-        z = z.view(z.size(0), 16, 2, -1)  # Reshape to (bs, 16, 2, 2)
-        y_hat = self.decoder(z)
-        loss = F.mse_loss(y_hat, y)
-        self.log("val/loss", loss)
-        return loss
-
-    def backward(self, loss, optimizer, optimizer_idx):
-        loss.backward()
-
-
-class AE(pl.LightningModule):
+class AE(nn.Module):
     def __init__(self, input_dim: int = 63, latent_dim: int = 16):
         super().__init__()
         assert latent_dim < 32
@@ -118,27 +89,3 @@ class AE(pl.LightningModule):
         z = self.encoder(x)
         y_hat = self.decoder(z)
         return y_hat.view(y_hat.size(0), 1, 64, 86)
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, verbose=True)
-        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler, "monitor": "train/loss"}
-
-    def training_step(self, train_batch, batch_idx):
-        x, y, l = train_batch
-        z = self.encoder(x)
-        y_hat = self.decoder(z).view(z.size(0), 1, 64, 86)
-        loss = F.mse_loss(y_hat, y)
-        self.log("train/loss", loss)
-        return loss
-
-    def validation_step(self, val_batch, batch_idx):
-        x, y, l = val_batch
-        z = self.encoder(x)
-        y_hat = self.decoder(z).view(z.size(0), 1, 64, 86)
-        loss = F.mse_loss(y_hat, y)
-        self.log("val/loss", loss)
-        return loss
-
-    def backward(self, loss, optimizer, optimizer_idx):
-        loss.backward()
