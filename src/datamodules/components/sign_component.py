@@ -28,6 +28,7 @@ class SignAlphabetWaveformDataset(Dataset):
 
     def _load_audio_datasets(self, waveforms: List):
         datasets = []
+        print(f"Loading {len(waveforms)} waveforms")
         for wav in waveforms:
             audio_ds = AudioFile(filename=wav)
             datasets.append(ImplicitAudioWrapper(audio_ds))
