@@ -13,14 +13,17 @@ from pytorch_lightning import LightningDataModule
 from torchvision.transforms import transforms
 from typing import Optional, Tuple
 
-from src.datamodules.components.sign_component import load_sign_alphabet
+from src.datamodules.components.sign_component import (
+    load_sign_alphabet,
+    SignAlphabetSpectogramDataset,
+)
 
 
-class SignDataModule(LightningDataModule):
+class SignSpectogramDataModule(LightningDataModule):
     def __init__(
         self,
         poses_dir: str,
-        speech_gt_dir: str,
+        specto_dir: str,
         train_val_test_split: Tuple[float, float, float] = (0.7, 0.2, 0.1),
         batch_size: int = 64,
         num_workers: int = 0,
@@ -49,7 +52,10 @@ class SignDataModule(LightningDataModule):
         # load datasets only if they're not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             trainset = load_sign_alphabet(
-                self.hparams.poses_dir, self.hparams.speech_gt_dir, self.transforms
+                self.hparams.poses_dir,
+                self.hparams.specto_dir,
+                dataset_class=SignAlphabetSpectogramDataset,
+                transforms=self.transforms,
             )
             # TODO: When we get a test set we can load it separately in the same function
             # testset = load_sign_alphabet(
@@ -57,9 +63,13 @@ class SignDataModule(LightningDataModule):
             # )
             # dataset = ConcatDataset(datasets=[trainset, testset])
             dataset = trainset
-            train_length = int(self.hparams.train_val_test_split[0]*len(dataset))
-            val_length = int(self.hparams.train_val_test_split[1]*len(dataset))
-            lengths = [train_length, val_length, len(dataset)-(train_length+val_length)]
+            train_length = int(self.hparams.train_val_test_split[0] * len(dataset))
+            val_length = int(self.hparams.train_val_test_split[1] * len(dataset))
+            lengths = [
+                train_length,
+                val_length,
+                len(dataset) - (train_length + val_length),
+            ]
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=dataset,
                 lengths=lengths,
@@ -92,4 +102,3 @@ class SignDataModule(LightningDataModule):
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
         )
-

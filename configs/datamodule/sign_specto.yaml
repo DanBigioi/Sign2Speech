@@ -1,0 +1,8 @@
+_target_: src.datamodules.sign_spectogram_datamodule.SignSpectogramDataModule
+
+poses_dir: ${data_dir}/train_poses # data_dir is specified in config.yaml
+specto_dir: ${data_dir}/spec
+batch_size: 64
+train_val_test_split: [0.7, 0.2, 0.1] # In percentages
+num_workers: 0
+pin_memory: False

@@ -11,15 +11,12 @@ Autoencoder models.
 """
 
 
-import torch.nn.functional as F
 import pytorch_lightning as pl
 import torch
 
 from typing import Any, List
 from torchmetrics import MinMetric
 from torchmetrics.regression.mse import MeanSquaredError
-
-from src.models.components.autoencoder import AE_Deconv, AE
 
 
 class AE_DeconvLitModule(pl.LightningModule):
@@ -51,10 +48,7 @@ class AE_DeconvLitModule(pl.LightningModule):
 
     def step(self, batch: Any):
         x, y, l = batch
-        z = self.encoder(x)
-        z = self.projector(z)
-        z = z.view(z.size(0), 16, 2, -1)  # Reshape to (bs, 16, 2, 2)
-        y_hat = self.decoder(z)
+        y_hat = self.net(x)
         loss = self.criterion(y_hat, y)
         return loss, y_hat, y
 
@@ -123,19 +117,15 @@ class AELitModule(pl.LightningModule):
         # this line allows to access init params with 'self.hparams' attribute
         # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-
         self.net = net
-
         # loss function
         self.criterion = torch.nn.MSELoss()
-
         # use separate metric instance for train, val and test step
         # to ensure a proper reduction over the epoch
         self.train_loss = MeanSquaredError()
         self.val_loss = MeanSquaredError()
         self.test_loss = MeanSquaredError()
-
-        # for logging best so far validation accuracy
+        # for logging best so far validation loss
         self.val_loss_best = MinMetric()
 
     def forward(self, x: torch.Tensor):

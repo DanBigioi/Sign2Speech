@@ -12,10 +12,6 @@
 
 from torch import nn
 
-import torch.nn.functional as F
-import pytorch_lightning as pl
-import torch
-
 
 class AE_Deconv(nn.Module):
     def __init__(self, input_dim: int = 63, latent_dim: int = 16):

@@ -1,0 +1,22 @@
+_target_: src.models.hypersiren_module.HyperSirenLitModule
+lr: 0.001
+weight_decay: 0.0005
+latent_dim: 16
+hyper_hidden_layers: 1
+hyper_hidden_features: 256
+
+encoder:
+  _target_: src.vendor.siren_modules.FCBlock
+  input_dim: 63
+  out_features: ${latent_dim}
+  hidden_features: 32
+  nonlinearity: relu
+  num_hidden_layers: 1
+
+hyponet:
+  _target_: src.models.components.bvpnet.SingleBVPNet
+  in_features: 1 # Time step
+  out_features: 1 # Amplitude
+  num_hidden_layers: 3
+  hidden_features: 256
+  type: sine
