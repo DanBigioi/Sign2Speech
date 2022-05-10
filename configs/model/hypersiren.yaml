@@ -17,6 +17,6 @@ hyponet:
   _target_: src.models.components.bvpnet.SingleBVPNet
   in_features: 1 # Time step
   out_features: 1 # Amplitude
-  num_hidden_layers: 3
+  num_hidden_layers: 2
   hidden_features: 256
   type: sine
