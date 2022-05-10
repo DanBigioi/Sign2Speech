@@ -46,18 +46,9 @@ class SingleBVPNet(MetaModule):
             params = OrderedDict(self.named_parameters())
 
         # Enables us to compute gradients w.r.t. coordinates
-        coords_org = model_input["coords"].clone().detach().requires_grad_(True)
+        coords_org = model_input.clone().detach().requires_grad_(True)
         coords = coords_org
 
         output = self.net(coords, self.get_subdict(params, "net"))
-        return {"model_in": coords_org, "model_out": output}
-
-    def forward_with_activations(self, model_input):
-        """Returns not only model output, but also intermediate activations."""
-        coords = model_input["coords"].clone().detach().requires_grad_(True)
-        activations = self.net.forward_with_activations(coords)
-        return {
-            "model_in": coords,
-            "model_out": activations.popitem(),
-            "activations": activations,
-        }
+        # return {"model_in": coords_org, "model_out": output}
+        return output

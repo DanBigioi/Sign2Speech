@@ -68,9 +68,9 @@ class HyperSirenLitModule(pl.LightningModule):
 
     def step(self, batch: Any):
         x, y, l = batch
-        hypo_params = self.hypernet(self.encoder(x))
-        y_hat = self.hyponet(time_step, params=hypo_params)
-        loss = self.criterion(y_hat, y)
+        hypo_params = self.hypernet(self.encoder(x['pose']))
+        y_hat = self.hyponet(x['audio'], params=hypo_params)
+        loss = self.criterion(y_hat, y['amplitude'])
         return loss, y_hat, y
 
     def training_step(self, train_batch, batch_idx):

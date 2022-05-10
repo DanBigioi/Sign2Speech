@@ -1,5 +1,6 @@
 # @package _global_
 
+
 # to execute this experiment run:
 # python train.py experiment=example
 
@@ -30,7 +31,7 @@ model:
   hyper_hidden_features: 256
 
 datamodule:
-  batch_size: 64
+  batch_size: 1
 
 logger:
   wandb:

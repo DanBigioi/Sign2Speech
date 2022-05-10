@@ -35,9 +35,7 @@ class SignAlphabetWaveformDataset(Dataset):
         return datasets
 
     def __len__(self):
-        assert len(self.poses) == len(self.labels) and len(self.poses) == len(
-            self.audio_datasets
-        ), "Dataset items mismatch"
+        assert len(self.poses) == len(self.labels), "Dataset items mismatch"
         return len(self.poses)
 
     def __getitem__(self, idx) -> Tuple:
@@ -56,12 +54,18 @@ class SignAlphabetWaveformDataset(Dataset):
                 rate: the WAV sample rate,
                 scale: the scale of the amplitudes (max of abs value of the data),
             }
+        label: the alphabet letter (int)
         """
         # TODO: Memory pinning?
-        wav_dataset = self.audio_datasets[idx]
         hand_pose = np.load(self.poses[idx]).astype(np.float32)
         label = self.labels[idx]
-        return hand_pose, wav_dataset, label
+        # Indexing has no effect, it will return the whole audio range
+        wav_dataset = self.audio_datasets[label][0]
+        return (
+            {"pose": hand_pose, "audio": wav_dataset[0]["coords"]},
+            {"amplitude": wav_dataset[1]["func"]},
+            label,
+        )
 
 
 class SignAlphabetSpectogramDataset(Dataset):
@@ -74,18 +78,16 @@ class SignAlphabetSpectogramDataset(Dataset):
         self.transforms = transforms
 
     def __len__(self):
-        assert len(self.poses) == len(self.labels) and len(self.poses) == len(
-            self.spectograms
-        ), "Dataset items mismatch"
+        assert len(self.poses) == len(self.labels), "Dataset items mismatch"
         return len(self.poses)
 
     def __getitem__(self, idx) -> Tuple:
         # TODO: Memory pinning?
-        specto = read_image(self.spectograms[idx], mode=ImageReadMode.GRAY)
-        if self.transforms:
-            specto = self.transforms(specto)
         hand_pose = np.load(self.poses[idx]).astype(np.float32)
         label = self.labels[idx]
+        specto = read_image(self.spectograms[label], mode=ImageReadMode.GRAY)
+        if self.transforms:
+            specto = self.transforms(specto)
         return hand_pose, specto, label
 
 
@@ -159,7 +161,7 @@ def load_sign_alphabet(
     for i, label in enumerate(samples.keys()):
         poses += samples[label]
         labels += [label_codes[i]] * len(samples[label])
-        gt += [speech_gt[label.upper()]] * len(samples[label])
+        gt += [speech_gt[label.upper()]]
 
     dataset = None
     if dataset_class is SignAlphabetSpectogramDataset:
