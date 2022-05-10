@@ -10,12 +10,16 @@
 HyperNetwork predicting the weights of a SIREN from an embedding of the hand pose.
 """
 
+from collections import OrderedDict
 import pytorch_lightning as pl
 import torch
+import os
 
 from typing import Any, List
 from torchmetrics import MinMetric
+from hydra.utils import get_original_cwd
 from torchmetrics.regression.mse import MeanSquaredError
+from src.models.components.autoencoder import AE
 
 from src.models.components.hypernetwork import HyperNetwork
 
@@ -23,7 +27,8 @@ from src.models.components.hypernetwork import HyperNetwork
 class HyperSirenLitModule(pl.LightningModule):
     def __init__(
         self,
-        encoder: torch.nn.Module,
+        # encoder: torch.nn.Module,
+        autoencoder_ckpt: str,
         hyponet: torch.nn.Module,
         latent_dim: int,
         hyper_hidden_layers: int = 1,
@@ -35,7 +40,12 @@ class HyperSirenLitModule(pl.LightningModule):
         # this line allows to access init params with 'self.hparams' attribute
         # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-        self.encoder = encoder
+        if autoencoder_ckpt is not None:
+            print(f"Restoring AE from {autoencoder_ckpt}")
+            self.encoder = self._init_encoder_from_ae_ckpt(autoencoder_ckpt)
+            self.freeze_encoder()
+        else:
+            self.encoder = AE()
         self.hyponet = hyponet
         self.hypernet = HyperNetwork(
             hyper_in_features=latent_dim,  # The output dimensionality of the encoder
@@ -57,6 +67,19 @@ class HyperSirenLitModule(pl.LightningModule):
         for p in self.hypernet.parameters():
             p.requires_grad = False
 
+    def freeze_encoder(self):
+        for p in self.encoder.parameters():
+            p.requires_grad = False
+
+    def _init_encoder_from_ae_ckpt(self, ckpt: str):
+        state_dict_org = torch.load(os.path.join(get_original_cwd(), ckpt))['state_dict']
+        state_dict = OrderedDict()
+        for key, val in state_dict_org.items():
+            state_dict[key.replace('net.', '')] = val
+        encoder = AE()
+        encoder.load_state_dict(state_dict)
+        return encoder
+
     def get_hypo_net_weights(self, x: torch.Tensor):
         """
         The model input is a hand pose. This method returns the predicted weights for the
@@ -68,8 +91,8 @@ class HyperSirenLitModule(pl.LightningModule):
 
     def step(self, batch: Any):
         x, y, l = batch
-        # TODO: Apply contrastive learning on the embeddings
-        hypo_params = self.hypernet(self.encoder(x['pose']))
+        # TODO: Apply contrastive learning on the embeddings / transfer learning from autoencoder
+        hypo_params = self.hypernet(self.encoder.encode(x['pose']))
         y_hat = self.hyponet(x['audio'], params=hypo_params)
         loss = self.criterion(y_hat, y['amplitude'])
         return loss, y_hat, y

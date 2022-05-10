@@ -58,11 +58,12 @@ class AE(nn.Module):
         assert latent_dim < 32
         self.encoder = nn.Sequential(
             nn.Linear(input_dim, 32),
-            nn.BatchNorm1d(32),
+            # nn.BatchNorm1d(32),
             nn.ReLU(True),
             nn.Linear(32, latent_dim),
-            nn.BatchNorm1d(latent_dim),
+            # nn.BatchNorm1d(latent_dim),
             nn.ReLU(True),
+            # nn.Tanh(),
             # nn.Dropout2d(p=0.2),
         )
         self.decoder = nn.Sequential(
@@ -85,3 +86,6 @@ class AE(nn.Module):
         z = self.encoder(x)
         y_hat = self.decoder(z)
         return y_hat.view(y_hat.size(0), 1, 64, 86)
+
+    def encode(self, x):
+        return self.encoder(x)

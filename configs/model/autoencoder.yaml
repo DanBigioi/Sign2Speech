@@ -1,6 +1,6 @@
 _target_: src.models.autoencoder_module.AELitModule
 lr: 0.001
-weight_decay: 0.0005
+weight_decay: 0 #0.0005
 
 net:
   _target_: src.models.components.autoencoder.AE

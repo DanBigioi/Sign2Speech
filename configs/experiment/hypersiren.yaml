@@ -21,14 +21,15 @@ seed: 12345
 
 trainer:
   min_epochs: 10
-  max_epochs: 100
+  max_epochs: 1000
   #gradient_clip_val: 0.5
 
 model:
   lr: 0.001
+  weight_decay: 0
   latent_dim: 16
   hyper_hidden_layers: 1
-  hyper_hidden_features: 256
+  hyper_hidden_features: 128
 
 datamodule:
   batch_size: 1

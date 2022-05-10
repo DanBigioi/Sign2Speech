@@ -5,18 +5,20 @@ latent_dim: 16
 hyper_hidden_layers: 1
 hyper_hidden_features: 256
 
-encoder:
-  _target_: src.vendor.siren_modules.FCBlock
-  in_features: 63
-  out_features: ${..latent_dim}
-  hidden_features: 32
-  nonlinearity: relu
-  num_hidden_layers: 1
+#encoder:
+#  _target_: src.vendor.siren_modules.FCBlock
+#  in_features: 63
+#  out_features: ${..latent_dim}
+#  hidden_features: 32
+#  nonlinearity: relu
+#  num_hidden_layers: 1
+
+autoencoder_ckpt: null
 
 hyponet:
   _target_: src.models.components.bvpnet.SingleBVPNet
   in_features: 1 # Time step
   out_features: 1 # Amplitude
   num_hidden_layers: 2
-  hidden_features: 256
+  hidden_features: 128
   type: sine
