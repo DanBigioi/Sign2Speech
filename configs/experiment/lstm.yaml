@@ -4,7 +4,7 @@
 # python train.py experiment=example
 
 defaults:
-  - override /datamodule: sign_specto.yaml
+  - override /datamodule: sign_mfcc.yaml
   - override /model: lstm.yaml
   - override /callbacks: wandb.yaml
   - override /logger: wandb

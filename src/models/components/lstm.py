@@ -13,7 +13,7 @@ class LSTM(nn.Module):
         self.latent_dim = latent_dim
         self.num_layers = num_layers
         self.input_dim = input_dim
-        self.bilstm = nn.LSTM(
+        self.lstm = nn.LSTM(
             input_size=input_dim,
             hidden_size=latent_dim,
             num_layers=num_layers,
@@ -33,6 +33,6 @@ class LSTM(nn.Module):
             nn.Linear(128, 64),
         )
 
-    def forward(self, X):
-        lstm_out, (hn, cn) = self.bilstm(X)
+    def forward(self, x):
+        lstm_out, (hn, cn) = self.lstm(x)
         return self.fc(lstm_out)

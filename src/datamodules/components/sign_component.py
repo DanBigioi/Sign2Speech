@@ -171,5 +171,5 @@ def load_sign_alphabet(
     elif dataset_class is SignAlphabetWaveformDataset:
         dataset = SignAlphabetWaveformDataset(poses, labels, gt)
     elif dataset_class is SignAlphabetMFCCDataset:
-        raise NotImplementedError
+        raise NotImplementedError("MFCC sequence dataset loader not implemented!")
     return dataset
