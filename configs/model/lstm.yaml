@@ -1,0 +1,10 @@
+_target_: src.models.lstm.lstm_module
+lr: 0.001
+weight_decay: 0.0005
+
+net:
+  _target_: src.models.components.lstm.lstm
+  input_size: 63
+  hidden_size: 256
+  num_layers: 4
+  bidirectional: True
