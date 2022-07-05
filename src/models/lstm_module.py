@@ -9,18 +9,17 @@
 LSTM-based models.
 """
 
-import torch.nn.functional as F
-import pytorch_lightning as pl
 import torch
+import pytorch_lightning as pl
 
 from typing import Any, List
 from torchmetrics import MinMetric
 from torchmetrics.regression.mse import MeanSquaredError
-from src.models.components.lstm import lstm
 
-class lstm_module(pl.LightningModule):
+
+class LSTMLitModule(pl.LightningModule):
     def __init__(
-            self, net: torch.nn.Module, lr: float = 0.001, weight_decay: float = 0.00005
+        self, net: torch.nn.Module, lr: float = 0.001, weight_decay: float = 0.00005
     ):
         super().__init__()
 

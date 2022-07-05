@@ -1,0 +1,40 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=example
+
+defaults:
+  - override /datamodule: sign_specto.yaml
+  - override /model: lstm.yaml
+  - override /callbacks: wandb.yaml
+  - override /logger: wandb
+  - override /trainer: default.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+# name of the run determines folder name in logs
+name: "lstm"
+
+seed: 12345
+
+trainer:
+  min_epochs: 10
+  max_epochs: 100
+  #gradient_clip_val: 0.5
+
+model:
+  lr: 0.001
+  weight_decay: 5e-5
+  net:
+    input_dim: 63
+    latent_dim: 256
+    num_layers: 4
+    bidirectional: True
+
+datamodule:
+  batch_size: 128
+
+logger:
+  wandb:
+    tags: ["alphabet_spectograms", "${name}"]
