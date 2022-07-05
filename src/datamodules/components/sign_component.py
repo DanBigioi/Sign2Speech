@@ -57,6 +57,7 @@ class SignAlphabetWaveformDataset(Dataset):
         label: the alphabet letter (int)
         """
         # TODO: Memory pinning?
+        idx = 0 # Debug
         hand_pose = np.load(self.poses[idx]).astype(np.float32)
         label = self.labels[idx]
         # Indexing has no effect, it will return the whole audio range
