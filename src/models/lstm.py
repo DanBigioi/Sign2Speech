@@ -9,65 +9,99 @@
 LSTM-based models.
 """
 
-# TODO: Refactor this into a module + component!
-
-from typing import Tuple
-from torch import nn
-
+import torch.nn.functional as F
 import pytorch_lightning as pl
-import torch.functional as F
 import torch
 
+from typing import Any, List
+from torchmetrics import MinMetric
+from torchmetrics.regression.mse import MeanSquaredError
+from src.models.components.lstm import lstm
 
-class Sign2SpeechNet(pl.LightningModule):
-    def __init__(self, input_size, hidden_size, num_layers, bidirectional=True):
+class lstm_module(pl.LightningModule):
+    def __init__(
+            self, net: torch.nn.Module, lr: float = 0.001, weight_decay: float = 0.00005
+    ):
         super().__init__()
-        self.hidden_size = hidden_size  # for lstm
-        self.num_layers = num_layers  # for lstm
-        self.input_size = input_size  # Should be set to the number of keypoints
-        self.bilstm = nn.LSTM(
-            input_size=input_size,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            dropout=0.5,  # used to be 0.5
-            bidirectional=bidirectional,
-            batch_first=True,
+
+        # this line allows to access init params with 'self.hparams' attribute
+        # it also ensures init params will be stored in ckpt
+        self.save_hyperparameters(logger=False)
+
+        self.net = net
+
+        # loss function
+        self.criterion = torch.nn.MSELoss()
+
+        # use separate metric instance for train, val and test step
+        # to ensure a proper reduction over the epoch
+        self.train_loss = MeanSquaredError()
+        self.val_loss = MeanSquaredError()
+        self.test_loss = MeanSquaredError()
+
+        # for logging best so far validation accuracy
+        self.val_loss_best = MinMetric()
+
+    def forward(self, x: torch.Tensor):
+        return self.net(x)
+
+    def step(self, batch: Any):
+        x, y, l = batch
+        y_hat = self.forward(x)
+        loss = self.criterion(y_hat, y)
+        return loss, y_hat, y
+
+    def training_step(self, train_batch, batch_idx):
+        loss, y_hat, y = self.step(train_batch)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        # TODO: SignalToNoiseRatio or other audio metrics once we have incorporated a neural
+        # vocoder
+
+        # we can return here dict with any tensors
+        # and then read it in some callback or in `training_epoch_end()`` below
+        # remember to always return loss from `training_step()` or else backpropagation will fail!
+        return {"loss": loss, "preds": y_hat, "targets": y}
+
+    def training_epoch_end(self, outputs: List[Any]):
+        # `outputs` is a list of dicts returned from `training_step()`
+        pass
+
+    def validation_step(self, val_batch, batch_idx):
+        loss, y_hat, y = self.step(val_batch)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        return {"loss": loss, "preds": y_hat, "targets": y}
+
+    def validation_epoch_end(self, outputs: List[Any]):
+        loss = self.val_loss.compute()
+        self.val_loss_best.update(loss)
+        self.log(
+            "val/loss_best", self.val_loss_best.compute(), on_epoch=True, prog_bar=True
         )
 
-    def forward(self, mfcc, hand_keypoints, label):
-        # If input is sequential
-        # In Shape = Batch * Sequence_Len * Keypoint Shape
-        output, (hn, cn) = self.bilstm(hand_keypoints)
+    def test_step(self, batch: Any, batch_idx: int):
+        loss, preds, targets = self.step(batch)
+        # log test metrics
+        self.log("test/loss", loss, on_step=False, on_epoch=True)
+        return {"loss": loss, "preds": preds, "targets": targets}
 
-        # if input is non sequential
-        # In Shape = Batch * Keypoint Shape
+    def test_epoch_end(self, outputs: List[Any]):
+        pass
 
-        # TODO: Figure out what network architecture we want to use
-
-        # Out Shape = Batch * Sequence_Len * MFCC Features
-        return output
+    def on_epoch_end(self):
+        # reset metrics at the end of every epoch
+        self.train_loss.reset()
+        self.test_loss.reset()
+        self.val_loss.reset()
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+        """Choose what optimizers and learning-rate schedulers to use in your optimization.
+        Normally you'd need one. But in the case of GANs or similar you might have multiple.
 
-    def training_step(self, batch, batch_idx):
-        mfcc, hand_keypoints, label = batch
-        mfcc = mfcc.float()
-        hand_keypoints = hand_keypoints.float()
-        predicted_mfcc = self.forward(mfcc, hand_keypoints, label)
-        loss = F.mse_loss(predicted_mfcc, mfcc)
-        self.log("train_loss", loss)
-        return loss
-
-    def validation_step(self, batch, batch_idx):
-        mfcc, hand_keypoints, label = batch
-        mfcc = mfcc.float()
-        hand_keypoints = hand_keypoints.float()
-        predicted_mfcc = self.forward(mfcc, hand_keypoints, label)
-        loss = F.mse_loss(predicted_mfcc, mfcc)
-        self.log("val_loss", loss)
-        return loss
-
-    def backward(self, trainer, loss, optimizer, optimizer_idx):
-        loss.backward()
+        See examples here:
+            https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
+        """
+        return torch.optim.Adam(
+            params=self.parameters(),
+            lr=self.hparams.lr,
+            weight_decay=self.hparams.weight_decay,
+        )
