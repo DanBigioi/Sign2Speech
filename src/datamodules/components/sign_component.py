@@ -11,11 +11,60 @@ import numpy as np
 import torch
 import os
 
-from torch.utils.data import Dataset
 from torchvision.transforms import ConvertImageDtype
 from torchvision.io import read_image, ImageReadMode
+from torch.utils.data import Dataset
+from typing import Tuple, Dict, List
 from sklearn import preprocessing
-from typing import Tuple, Dict
+
+from src.vendor.dataio import AudioFile, ImplicitAudioWrapper
+
+class SignAlphabetWaveformDataset(Dataset):
+    def __init__(self, poses, labels, waveforms):
+        self.poses = poses
+        self.labels = labels
+        self.audio_datasets = self._load_audio_datasets(waveforms)
+
+    def _load_audio_datasets(self, waveforms: List):
+        datasets = []
+        print(f"Loading {len(waveforms)} waveforms")
+        for wav in waveforms:
+            audio_ds = AudioFile(filename=wav)
+            datasets.append(ImplicitAudioWrapper(audio_ds))
+        return datasets
+
+    def __len__(self):
+        assert len(self.poses) == len(self.labels), "Dataset items mismatch"
+        return len(self.poses)
+
+    def __getitem__(self, idx) -> Tuple:
+        """
+        Return values:
+        hand_pose: numpy array representing a hand pose.
+        wav_dataset: returns a Torch Dataset that allows to iterate over a waveform and obtain such
+            dictionaries tuple:
+            {
+                idx: the querried index,
+                coords: a linearly spaced 1D grid from -100 to 100 with the number of WAV sumples,
+            },
+            {
+                func: the WAV data (amplitudes),
+                rate: the WAV sample rate,
+                scale: the scale of the amplitudes (max of abs value of the data),
+            }
+        label: the alphabet letter (int)
+        """
+        # TODO: Memory pinning?
+        idx = 0 # Debug
+        hand_pose = np.load(self.poses[idx]).astype(np.float32)
+        label = self.labels[idx]
+        # Indexing has no effect, it will return the whole audio range
+        wav_dataset = self.audio_datasets[label][0]
+        return (
+            {"pose": hand_pose, "audio": wav_dataset[0]["coords"]},
+            {"amplitude": wav_dataset[1]["func"]},
+            label,
+        )
 
 
 class SignAlphabetSpectogramDataset(Dataset):
@@ -28,18 +77,16 @@ class SignAlphabetSpectogramDataset(Dataset):
         self.transforms = transforms
 
     def __len__(self):
-        assert len(self.poses) == len(self.labels) and len(self.poses) == len(
-            self.spectograms
-        ), "Dataset items mismatch"
+        assert len(self.poses) == len(self.labels), "Dataset items mismatch"
         return len(self.poses)
 
     def __getitem__(self, idx) -> Tuple:
         # TODO: Memory pinning?
-        specto = read_image(self.spectograms[idx], mode=ImageReadMode.GRAY)
-        if self.transforms:
-            specto = self.transforms(specto)
         hand_pose = np.load(self.poses[idx]).astype(np.float32)
         label = self.labels[idx]
+        specto = read_image(self.spectograms[label], mode=ImageReadMode.GRAY)
+        if self.transforms:
+            specto = self.transforms(specto)
         return hand_pose, specto, label
 
 
@@ -48,20 +95,27 @@ class SignAlphabetMFCCDataset(Dataset):
         self.poses = poses
         self.labels = labels
         self.mfccs = mfccs
+        
+    def interp_func(input_mat, src_fps=30, trg_fps=101):
+        xp = list(np.arange(0, input_mat.shape[0], 1))
+        interp_xp = list(np.arange(0, input_mat.shape[0], src_fps/trg_fps))
+        interp_mat = np.zeros(shape=(len(interp_xp), input_mat.shape[1]))
+        for j in range(input_mat.shape[1]):
+            interp_mat[:, j] = np.interp(interp_xp, xp, input_mat[:, j])
+        return interp_mat
 
     def __len__(self):
-        assert len(self.poses) == len(self.labels) and len(self.poses) == len(
-            self.mfccs
-        ), "Dataset items mismatch"
+        assert len(self.poses) == len(self.labels), "Dataset items mismatch"
         return len(self.poses)
 
     def __getitem__(self, idx) -> Tuple:
         # TODO: Memory pinning?
-        hand_pose = np.load(self.poses[idx])
-        mfccs = self.mfccs[idx]
+        hand_pose = np.load(self.poses[idx]).astype(np.float32)
+        hand_pose = interp_func(hand_pose)
         label = self.labels[idx]
-        return mfccs, hand_pose, label
-
+        mel_coef = np.load(self.mfccs[label])
+        
+        return hand_pose, mel_coef, label
 
 def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
     """
@@ -90,28 +144,38 @@ def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
 
 
 def load_sign_alphabet(
-    alphabet_dataset_path, speech_gt_path, transforms, train=True
+    alphabet_dataset_path, gt_path, dataset_class: Dataset, transforms=None, train=True
 ) -> Dataset:
     """
     Load a Sign Alphabet dataset, split into training and validation or test sets, and return data
     loaders.
     If testing, a different dataset file is assumed and no splitting will be done.
     """
+    # TODO: Load the test set
     samples = parse_numpy_dataset(alphabet_dataset_path)
     le = preprocessing.LabelEncoder()
     label_codes = le.fit_transform(np.array(list(samples.keys())))
 
     speech_gt = dict()
-    for path in os.listdir(speech_gt_path):
-        full_path = os.path.join(speech_gt_path, path)
+    for path in os.listdir(gt_path):
+        full_path = os.path.join(gt_path, path)
         if os.path.isfile(full_path):
             speech_gt[path.split(".")[0].upper()] = full_path
     assert len(speech_gt) > 0, "Speech ground truth not loaded"
 
-    poses, labels, spectograms = [], [], []
+    poses, labels, gt = [], [], []
     for i, label in enumerate(samples.keys()):
         poses += samples[label]
         labels += [label_codes[i]] * len(samples[label])
-        spectograms += [speech_gt[label.upper()]] * len(samples[label])
+        gt += [speech_gt[label.upper()]]
 
-    return SignAlphabetSpectogramDataset(poses, labels, spectograms, transforms=transforms)
+    dataset = None
+    if dataset_class is SignAlphabetSpectogramDataset:
+        dataset = SignAlphabetSpectogramDataset(
+            poses, labels, gt, transforms=transforms
+        )
+    elif dataset_class is SignAlphabetWaveformDataset:
+        dataset = SignAlphabetWaveformDataset(poses, labels, gt)
+    elif dataset_class is SignAlphabetMFCCDataset:
+        dataset = SignAlphabetMFCCDataset(poses, labels, gt)
+    return dataset
