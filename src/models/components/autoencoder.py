@@ -79,13 +79,13 @@ class AE(nn.Module):
             nn.ReLU(True),
             nn.Linear(1024, 2048),
             nn.ReLU(True),
-            nn.Linear(2048, 5504),
+            nn.Linear(2048, 6880),
         )
 
     def forward(self, x):
         z = self.encoder(x)
         y_hat = self.decoder(z)
-        return y_hat.view(y_hat.size(0), 1, 64, 86)
+        return y_hat.view(y_hat.size(0), 1, 80, 86)
 
     def encode(self, x):
         return self.encoder(x)

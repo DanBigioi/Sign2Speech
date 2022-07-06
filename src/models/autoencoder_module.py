@@ -13,10 +13,12 @@ Autoencoder models.
 
 import pytorch_lightning as pl
 import torch
+import io
 
 from typing import Any, List
 from torchmetrics import MinMetric
 from torchmetrics.regression.mse import MeanSquaredError
+from diffwave.inference import predict as diffwave_predict
 
 
 class AE_DeconvLitModule(pl.LightningModule):
@@ -110,7 +112,11 @@ class AE_DeconvLitModule(pl.LightningModule):
 
 class AELitModule(pl.LightningModule):
     def __init__(
-        self, net: torch.nn.Module, lr: float = 0.001, weight_decay: float = 0.00005
+        self,
+        net: torch.nn.Module,
+        lr: float = 0.001,
+        weight_decay: float = 0.00005,
+        diffwave_model_path="models/diffwave-ljspeech-22kHz-1000578.pt",
     ):
         super().__init__()
 
@@ -118,6 +124,8 @@ class AELitModule(pl.LightningModule):
         # it also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
         self.net = net
+
+        self.diffwave_model = diffwave_model_path
         # loss function
         self.criterion = torch.nn.MSELoss()
         # use separate metric instance for train, val and test step
@@ -128,8 +136,11 @@ class AELitModule(pl.LightningModule):
         # for logging best so far validation loss
         self.val_loss_best = MinMetric()
 
-    def forward(self, x: torch.Tensor):
-        return self.net(x)
+    def forward(self, x: torch.Tensor, wav_output=False):
+        y = self.net(x) # [channels, n_mels, time]
+        if wav_output:
+            y = y[0], diffwave_predict(y[0], self.diffwave_model, fast_sampling=True)  # Returns (audio, sample_rate)
+        return y
 
     def step(self, batch: Any):
         x, y, l = batch
@@ -154,6 +165,7 @@ class AELitModule(pl.LightningModule):
 
     def validation_step(self, val_batch, batch_idx):
         loss, y_hat, y = self.step(val_batch)
+        self.val_loss(y_hat, y)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return {"loss": loss, "preds": y_hat, "targets": y}
 
