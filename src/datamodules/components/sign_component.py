@@ -19,6 +19,7 @@ from sklearn import preprocessing
 
 from src.vendor.dataio import AudioFile, ImplicitAudioWrapper
 
+
 class SignAlphabetWaveformDataset(Dataset):
     def __init__(self, poses, labels, waveforms):
         self.poses = poses
@@ -55,7 +56,7 @@ class SignAlphabetWaveformDataset(Dataset):
         label: the alphabet letter (int)
         """
         # TODO: Memory pinning?
-        idx = 0 # Debug
+        idx = 0  # Debug
         hand_pose = np.load(self.poses[idx]).astype(np.float32)
         label = self.labels[idx]
         # Indexing has no effect, it will return the whole audio range
@@ -95,10 +96,10 @@ class SignAlphabetMFCCDataset(Dataset):
         self.poses = poses
         self.labels = labels
         self.mfccs = mfccs
-        
-    def interp_func(input_mat, src_fps=30, trg_fps=101):
+
+    def interp_func(self, input_mat, src_fps=30, trg_fps=101):
         xp = list(np.arange(0, input_mat.shape[0], 1))
-        interp_xp = list(np.arange(0, input_mat.shape[0], src_fps/trg_fps))
+        interp_xp = list(np.arange(0, input_mat.shape[0], src_fps / trg_fps))
         interp_mat = np.zeros(shape=(len(interp_xp), input_mat.shape[1]))
         for j in range(input_mat.shape[1]):
             interp_mat[:, j] = np.interp(interp_xp, xp, input_mat[:, j])
@@ -111,11 +112,12 @@ class SignAlphabetMFCCDataset(Dataset):
     def __getitem__(self, idx) -> Tuple:
         # TODO: Memory pinning?
         hand_pose = np.load(self.poses[idx]).astype(np.float32)
-        hand_pose = interp_func(hand_pose)
+        hand_pose = self.interp_func(hand_pose)
         label = self.labels[idx]
         mel_coef = np.load(self.mfccs[label])
-        
+
         return hand_pose, mel_coef, label
+
 
 def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
     """
