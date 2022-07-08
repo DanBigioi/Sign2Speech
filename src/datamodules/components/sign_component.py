@@ -41,7 +41,6 @@ class SignAlphabetWaveformDataset(Dataset):
     def __getitem__(self, idx) -> Tuple:
         """
         Return values:
-
         hand_pose: numpy array representing a hand pose.
         wav_dataset: returns a Torch Dataset that allows to iterate over a waveform and obtain such
             dictionaries tuple:
@@ -57,7 +56,7 @@ class SignAlphabetWaveformDataset(Dataset):
         label: the alphabet letter (int)
         """
         # TODO: Memory pinning?
-        idx = 0 # Debug
+        idx = 0  # Debug
         hand_pose = np.load(self.poses[idx]).astype(np.float32)
         label = self.labels[idx]
         # Indexing has no effect, it will return the whole audio range
@@ -71,7 +70,7 @@ class SignAlphabetWaveformDataset(Dataset):
 
 class SignAlphabetSpectogramDataset(Dataset):
     def __init__(
-        self, poses, labels, spectograms, transforms=ConvertImageDtype(torch.float32)
+            self, poses, labels, spectograms, transforms=ConvertImageDtype(torch.float32)
     ):
         self.poses = poses
         self.labels = labels
@@ -99,18 +98,25 @@ class SignAlphabetMFCCDataset(Dataset):
         self.mfccs = mfccs
 
     def __len__(self):
-        assert len(self.poses) == len(self.labels) and len(self.poses) == len(
-            self.mfccs
-        ), "Dataset items mismatch"
+        assert len(self.poses) == len(self.labels), "Dataset items mismatch"
         return len(self.poses)
 
     def __getitem__(self, idx) -> Tuple:
         # TODO: Memory pinning?
-        hand_pose = np.load(self.poses[idx])
-        mfccs = self.mfccs[idx]
+        hand_pose = np.load(self.poses[idx]).astype(np.float32)
+        hand_pose = interp_func(hand_pose).astype(np.float32)
         label = self.labels[idx]
-        return mfccs, hand_pose, label
+        mel_coef = np.load(self.mfccs[label]).astype(np.float32)
 
+        return hand_pose, mel_coef, label
+
+def interp_func(input_mat, src_fps=30, trg_fps=101):
+    xp = list(np.arange(0, input_mat.shape[0], 1))
+    interp_xp = list(np.arange(0, input_mat.shape[0], src_fps / trg_fps))
+    interp_mat = np.zeros(shape=(len(interp_xp), input_mat.shape[1]))
+    for j in range(input_mat.shape[1]):
+        interp_mat[:, j] = np.interp(interp_xp, xp, input_mat[:, j])
+    return interp_mat
 
 def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
     """
@@ -139,7 +145,7 @@ def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
 
 
 def load_sign_alphabet(
-    alphabet_dataset_path, gt_path, dataset_class: Dataset, transforms=None, train=True
+        alphabet_dataset_path, gt_path, dataset_class: Dataset, transforms=None, train=True
 ) -> Dataset:
     """
     Load a Sign Alphabet dataset, split into training and validation or test sets, and return data
@@ -172,5 +178,5 @@ def load_sign_alphabet(
     elif dataset_class is SignAlphabetWaveformDataset:
         dataset = SignAlphabetWaveformDataset(poses, labels, gt)
     elif dataset_class is SignAlphabetMFCCDataset:
-        raise NotImplementedError("MFCC sequence dataset loader not implemented!")
+        dataset = SignAlphabetMFCCDataset(poses, labels, gt)
     return dataset
