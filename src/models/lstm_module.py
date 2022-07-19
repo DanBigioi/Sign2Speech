@@ -19,7 +19,10 @@ from torchmetrics.regression.mse import MeanSquaredError
 
 class LSTMLitModule(pl.LightningModule):
     def __init__(
-        self, net: torch.nn.Module, lr: float = 0.001, weight_decay: float = 0.00005
+        self,
+        net: torch.nn.Module,
+        lr: float = 0.001,
+        weight_decay: float = 0.00005,
     ):
         super().__init__()
 

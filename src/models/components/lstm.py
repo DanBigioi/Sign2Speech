@@ -8,6 +8,7 @@ class LSTM(nn.Module):
         latent_dim: int = 256,
         num_layers: int = 4,
         bidirectional=True,
+        n_time_steps: int = 100,
     ):
         super().__init__()
         self.latent_dim = latent_dim
@@ -24,11 +25,11 @@ class LSTM(nn.Module):
         self.fc_in_features = latent_dim * 2 if bidirectional else latent_dim
         self.fc = nn.Sequential(
             nn.Linear(in_features=self.fc_in_features, out_features=256),
-            nn.BatchNorm1d(100),
+            nn.BatchNorm1d(n_time_steps),
             nn.LeakyReLU(0.2),
             nn.Linear(256, 128),
             nn.Dropout(p=0.5),
-            nn.BatchNorm1d(100),
+            nn.BatchNorm1d(n_time_steps),
             nn.LeakyReLU(0.2),
             nn.Linear(128, 64),
         )
