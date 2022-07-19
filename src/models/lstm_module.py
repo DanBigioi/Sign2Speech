@@ -102,6 +102,7 @@ class LSTMLitModule(pl.LightningModule):
         )
 
     def test_step(self, batch: Any, batch_idx: int):
+        # TODO: SNR here
         loss, preds, targets = self.step(batch)
         # log test metrics
         self.log("test/loss", loss, on_step=False, on_epoch=True)
@@ -126,7 +127,7 @@ class LSTMLitModule(pl.LightningModule):
         optimizer = torch.optim.Adam(
             params=self.parameters(),
             lr=self.hparams.lr,
-            weight_decay=self.hparams.weight_decay,
+            # weight_decay=self.hparams.weight_decay,
         )
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 100)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
