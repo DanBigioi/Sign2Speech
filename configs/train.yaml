@@ -3,8 +3,8 @@
 # specify here default training configuration
 defaults:
   - _self_
-  - datamodule: sign_specto.yaml
-  - model: autoencoder.yaml
+  - datamodule: sign_mfcc.yaml
+  - model: lstm.yaml
   - callbacks: wandb.yaml
   - logger: wandb # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default.yaml
