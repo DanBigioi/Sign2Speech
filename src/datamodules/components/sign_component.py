@@ -95,9 +95,13 @@ class SignAlphabetMFCCDataset(Dataset):
     def __init__(self, poses, labels, mfccs, src_fps, target_fps):
         self.poses = []
         for pose in poses:
-            self.poses.append(interp_func(
-                np.load(pose).astype(np.float32), src_fps=src_fps, trg_fps=target_fps
-            ).astype(np.float32))
+            self.poses.append(
+                interp_func(
+                    np.load(pose).astype(np.float32),
+                    src_fps=src_fps,
+                    trg_fps=target_fps,
+                ).astype(np.float32)
+            )
         self.labels = labels
         self.mfccs = mfccs
 
@@ -108,7 +112,7 @@ class SignAlphabetMFCCDataset(Dataset):
     def __getitem__(self, idx) -> Tuple:
         hand_pose = self.poses[idx]
         label = self.labels[idx]
-        mel_coef = np.load(self.mfccs[label]).astype(np.float32)#.swapaxes(1, 2)
+        mel_coef = np.load(self.mfccs[label]).astype(np.float32)  # .swapaxes(1, 2)
         return hand_pose, mel_coef, label
 
 
@@ -121,6 +125,79 @@ def interp_func(input_mat, src_fps=30, trg_fps=101):
     for j in range(input_mat.shape[1]):
         interp_mat[:, j] = np.interp(interp_xp, xp, input_mat[:, j])
     return interp_mat
+
+
+class ISLDataset(Dataset):
+    def __init__(self, poses, labels, mfccs):
+        self.poses = []
+        for pose in poses:
+            self.poses.append(self._preprocess(np.load(pose).astype(np.float32)))
+        self.labels = labels
+        self.mfccs = mfccs
+
+    def _preprocess(self, pose_seq: np.ndarray) -> np.ndarray:
+        def putPoseInUnitCube(pose):
+            # Find the min and max X and Y coord of all the poses. This is the bounding box within which all pose hands will fit.
+            # (Use np slicing. [;, iterates through all rows, 0::3] takes every 3rd value from first col for Xs, then 1::3 for Ys)
+            minX = np.min(pose[0::3])
+            minY = np.min(pose[1::3])
+            minZ = np.min(pose[2::3])
+            maxX = np.max(pose[0::3])
+            maxY = np.max(pose[1::3])
+            maxZ = np.max(pose[2::3])
+
+            # The bounding box is the maxmin differences. This is in Blender coord units (metres).
+            boundingBoxW = abs(
+                maxX - minX
+            )  # width range  !!!  X IS ACTUALLY THE HEIGHT IN BLENDER !!!!
+            boundingBoxH = abs(maxY - minY)  # height range
+            boundingBoxD = abs(maxZ - minZ)  # depth range
+
+            # the bounding cube side is the largest of the three (hte cube is equal-sided)
+            boundingCubeSide = np.max([boundingBoxW, boundingBoxH, boundingBoxD])
+            # print(boundingBoxH, boundingBoxW, boundingBoxD, boundingCubeSide)
+
+            # Move the pose so that all the points are positive - so in +ive space
+            pose[0::3] = pose[0::3] - minX
+            pose[1::3] = pose[1::3] - minY
+            pose[2::3] = pose[2::3] - minZ
+
+            # Scale the cube to be the unit size eg 1x1x1
+            cube = (1, 1, 1)
+            pose[0::3] = (pose[0::3] / boundingCubeSide) * cube[0]  # Scale X coords
+            pose[1::3] = (pose[1::3] / boundingCubeSide) * cube[1]  # Scale Y coords
+            pose[2::3] = (pose[2::3] / boundingCubeSide) * cube[2]  # Scale z coords
+
+            return pose
+
+        # Seems to be x=width, y=height, z=depth!
+        # Wrist alignment
+        new_pose_seq = []
+        for i in range(pose_seq.shape[0]):
+            pose = pose_seq[i].reshape(21, 3)
+            # Wrist alginment:
+            aligned_pose = pose - pose[0]
+            aligned_pose = -aligned_pose # Mirror the hand
+            new_pose_seq.append(aligned_pose)
+        pose_seq = np.array(new_pose_seq)
+        # Positive axis enforcement
+        new_pose_seq = []
+        for i in range(pose_seq.shape[0]):
+            # pose = pose_seq[i].reshape(21, 3)
+            pose = putPoseInUnitCube(pose_seq[i].flatten())
+            new_pose_seq.append(pose)
+        pose_seq = np.array(new_pose_seq)
+        return pose_seq
+
+    def __len__(self):
+        assert len(self.poses) == len(self.labels), "Dataset items mismatch"
+        return len(self.poses)
+
+    def __getitem__(self, idx) -> Tuple:
+        hand_pose = self.poses[idx]
+        label = self.labels[idx]
+        mel_coef = np.load(self.mfccs[label]).astype(np.float32)  # .swapaxes(1, 2)
+        return hand_pose, mel_coef, label
 
 
 def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
@@ -163,7 +240,6 @@ def load_sign_alphabet(
     loaders.
     If testing, a different dataset file is assumed and no splitting will be done.
     """
-    # TODO: Load the test set
     samples = parse_numpy_dataset(alphabet_dataset_path)
     le = preprocessing.LabelEncoder()
     label_codes = le.fit_transform(np.array(list(samples.keys())))
@@ -192,4 +268,6 @@ def load_sign_alphabet(
         dataset = SignAlphabetMFCCDataset(
             poses, labels, gt, poses_src_fps, poses_target_fps
         )
+    elif dataset_class is ISLDataset:
+        dataset = ISLDataset(poses, labels, gt)
     return dataset

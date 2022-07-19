@@ -200,10 +200,9 @@ def load_landmarks(filepath):
     print("landmarks shape = " + str(landmarks.shape))
     return landmarks
 
-def plot_pose(ax, pose, plot_obj=True):
-    # Plot the hand first:
+def plot_pose(ax, pose):
     prev = pose[0, :]
-    for row in np.ndindex(pose.shape[0] - 8):
+    for row in np.ndindex(pose.shape[0]):
         cur = pose[row, :]
         if row[0] in [5, 9, 13, 17]:
             prev = pose[0, :]
@@ -216,31 +215,6 @@ def plot_pose(ax, pose, plot_obj=True):
         ax.plot(x, y, z, color="red")
         ax.text(cur[0], cur[1], cur[2], f"{row[0]}", color="red")
         prev = cur
-    if plot_obj:
-        # Plot the object bbox:
-        faces = [
-            [0, 1, 2, 3, 0],
-            [0, 1, 5, 4, 0],
-            [0, 3, 7, 4, 0],
-            [1, 5, 6, 2, 1],
-            [2, 3, 7, 6, 2],
-            [5, 6, 7, 4, 5]
-        ]
-        for face in faces:
-            prev = pose[21+face[0], :]
-            for idx in face:
-                row = 21 + idx
-                cur = pose[row, :]
-                cur, prev = cur.flatten(), prev.flatten()
-                x, y, z = (
-                    np.linspace(prev[0], cur[0], 100),
-                    np.linspace(prev[1], cur[1], 100),
-                    np.linspace(prev[2], cur[2], 100),
-                )
-                ax.plot(x, y, z, color="green")
-                ax.text(cur[0], cur[1], cur[2], f"{row-21}", color="green")
-                prev = cur
-
 #     scaling = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
 #     ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]]*3)
     world_limits = ax.get_w_lims()
@@ -250,6 +224,6 @@ def plot_pose(ax, pose, plot_obj=True):
 def plot_3D_hand(pose):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
-    plot_pose(ax, pose, plot_obj=False)
+    plot_pose(ax, pose.reshape(21, 3))
     plt.show()
 

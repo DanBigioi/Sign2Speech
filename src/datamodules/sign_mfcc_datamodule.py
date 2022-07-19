@@ -22,6 +22,7 @@ from typing import Optional, Tuple
 from src.datamodules.components.sign_component import (
     load_sign_alphabet,
     SignAlphabetMFCCDataset,
+    ISLDataset,
 )
 
 
@@ -56,37 +57,38 @@ class SignMFCCDataModule(LightningDataModule):
         """
 
         # load datasets only if they're not loaded already
-        if not self.data_train and not self.data_val and not self.data_test:
-            dataset = load_sign_alphabet(
-                self.hparams.poses_dir,
-                self.hparams.specto_dir,
-                dataset_class=SignAlphabetMFCCDataset,
-                poses_src_fps=self.hparams.poses_src_fps,
-                poses_target_fps=self.hparams.poses_target_fps,
-            )
-            # TODO: When we get a test set we can load it separately in the same function
-            # testset = load_sign_alphabet(
-            #     self.hparams.data_dir, train=False, transform=self.transforms
-            # )
-            # dataset = ConcatDataset(datasets=[trainset, testset])
-            train_length = int(self.hparams.train_pct * len(dataset))
-            val_length = len(dataset) - train_length
-            lengths = [
-                train_length,
-                val_length,
-            ]
-            self.data_train, self.data_val = random_split(
-                dataset=dataset,
-                lengths=lengths,
-                generator=torch.Generator().manual_seed(42),
-            )
-            self.data_test = load_sign_alphabet(
-                self.hparams.test_poses_dir,
-                self.hparams.specto_dir,
-                dataset_class=SignAlphabetMFCCDataset,
-                poses_src_fps=101,
-                poses_target_fps=101,
-            )
+        dataset = load_sign_alphabet(
+            self.hparams.poses_dir,
+            self.hparams.specto_dir,
+            dataset_class=SignAlphabetMFCCDataset,
+            poses_src_fps=self.hparams.poses_src_fps,
+            poses_target_fps=self.hparams.poses_target_fps,
+        )
+        # TODO: When we get a test set we can load it separately in the same function
+        # testset = load_sign_alphabet(
+        #     self.hparams.data_dir, train=False, transform=self.transforms
+        # )
+        # dataset = ConcatDataset(datasets=[trainset, testset])
+        train_length = int(self.hparams.train_pct * len(dataset))
+        val_length = len(dataset) - train_length
+        lengths = [
+            train_length,
+            val_length,
+        ]
+        # if stage == "train" and not self.data_train and not self.data_val:
+            
+        self.data_train, self.data_val = random_split(
+            dataset=dataset,
+            lengths=lengths,
+            generator=torch.Generator().manual_seed(42),
+        )
+        # elif stage == "test"  and not self.data_test:
+        self.data_test = self.data_val
+        # load_sign_alphabet(
+        #     self.hparams.test_poses_dir,
+        #     self.hparams.specto_dir,
+        #     dataset_class=ISLDataset,
+        # )
 
     def train_dataloader(self):
         return DataLoader(

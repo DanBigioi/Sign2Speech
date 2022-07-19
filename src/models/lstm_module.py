@@ -72,10 +72,10 @@ class LSTMLitModule(pl.LightningModule):
         x, y, l = batch
         y_hat, _ = self.forward(x)
         loss = self.criterion(y_hat, y)
-        return loss, y_hat, y
+        return loss, y_hat, y, l
 
     def training_step(self, train_batch, batch_idx):
-        loss, y_hat, y = self.step(train_batch)
+        loss, y_hat, y, l = self.step(train_batch)
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         # TODO: SignalToNoiseRatio or other audio metrics once we have incorporated a neural
         # vocoder
@@ -83,16 +83,16 @@ class LSTMLitModule(pl.LightningModule):
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()`` below
         # remember to always return loss from `training_step()` or else backpropagation will fail!
-        return {"loss": loss, "preds": y_hat, "targets": y}
+        return {"loss": loss, "preds": y_hat, "targets": y, "labels": l}
 
     def training_epoch_end(self, outputs: List[Any]):
         # `outputs` is a list of dicts returned from `training_step()`
         pass
 
     def validation_step(self, val_batch, batch_idx):
-        loss, y_hat, y = self.step(val_batch)
+        loss, y_hat, y, l = self.step(val_batch)
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-        return {"loss": loss, "preds": y_hat, "targets": y}
+        return {"loss": loss, "preds": y_hat, "targets": y, "labels": l}
 
     def validation_epoch_end(self, outputs: List[Any]):
         loss = self.val_loss.compute()
@@ -103,13 +103,28 @@ class LSTMLitModule(pl.LightningModule):
 
     def test_step(self, batch: Any, batch_idx: int):
         # TODO: SNR here
-        loss, preds, targets = self.step(batch)
+        self.eval()
+        loss, preds, targets, labels = self.step(batch)
         # log test metrics
         self.log("test/loss", loss, on_step=False, on_epoch=True)
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return {"loss": loss, "preds": preds, "targets": targets, "labels": labels}
 
     def test_epoch_end(self, outputs: List[Any]):
-        pass
+        letter_res = {}
+        letter_samples = {}
+        for batch in outputs:
+            for i in range(batch['labels'].shape[0]):
+                letter = batch['labels'][i].item()
+                if letter not in letter_res:
+                    letter_res[letter] = torch.tensor(.0)
+                    letter_samples[letter] = 0
+                letter_res[letter] += batch['loss'].item()
+                letter_samples[letter] += 1
+
+        for letter, loss in letter_res.items():
+            loss /= letter_samples[letter]
+            letter = chr(ord('A')+letter)
+            print(f"[*] Loss for '{letter}': MSE={loss:06f}")
 
     def on_epoch_end(self):
         # reset metrics at the end of every epoch
