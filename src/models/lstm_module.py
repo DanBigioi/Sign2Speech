@@ -33,12 +33,12 @@ class LSTMLitModule(pl.LightningModule):
         self.net = net
         # Workaround to load model mapped on GPU
         # https://stackoverflow.com/a/61840832
-        waveglow = torch.hub.load(
-            "NVIDIA/DeepLearningExamples:torchhub",
-            "nvidia_waveglow",
-            model_math="fp32",
-            pretrained=False,
-        )
+        # waveglow = torch.hub.load(
+        #     "NVIDIA/DeepLearningExamples:torchhub",
+        #     "nvidia_waveglow",
+        #     model_math="fp32",
+        #     pretrained=False,
+        # )
         # checkpoint = torch.hub.load_state_dict_from_url(
         #     "https://api.ngc.nvidia.com/v2/models/nvidia/waveglowpyt_fp32/versions/1/files/nvidia_waveglowpyt_fp32_20190306.pth",  # noqa: E501
         #     progress=True,
@@ -47,8 +47,8 @@ class LSTMLitModule(pl.LightningModule):
         # state_dict = {key.replace("module.", ""): value for key, value in checkpoint["state_dict"].items()}
 
         # self.waveglow.load_state_dict(state_dict)
-        self.waveglow = waveglow.remove_weightnorm(waveglow)
-        self.waveglow.eval()
+        # self.waveglow = waveglow.remove_weightnorm(waveglow)
+        # self.waveglow.eval()
 
         # loss function
         self.criterion = torch.nn.MSELoss()
@@ -64,8 +64,8 @@ class LSTMLitModule(pl.LightningModule):
 
     def forward(self, x: torch.Tensor, wav_output=False):
         wav, y = None, self.net(x)
-        if wav_output:
-            wav = self.waveglow(y)
+        # if wav_output:
+        #     wav = self.waveglow(y)
         return self.net(x), wav
 
     def step(self, batch: Any):
