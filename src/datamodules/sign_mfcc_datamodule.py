@@ -79,7 +79,7 @@ class SignMFCCDataModule(LightningDataModule):
                 lengths=lengths,
                 generator=torch.Generator().manual_seed(42),
             )
-            self.data_test = None
+            self.data_test = self.data_val
 
     def train_dataloader(self):
         return DataLoader(
@@ -100,7 +100,6 @@ class SignMFCCDataModule(LightningDataModule):
         )
 
     def test_dataloader(self):
-        raise NotImplementedError()
         return DataLoader(
             dataset=self.data_test,
             batch_size=self.hparams.batch_size,
