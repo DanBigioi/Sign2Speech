@@ -113,6 +113,8 @@ class SignAlphabetMFCCDataset(Dataset):
 
 
 def interp_func(input_mat, src_fps=30, trg_fps=101):
+    if src_fps == trg_fps:
+        return input_mat
     xp = list(np.arange(0, input_mat.shape[0], 1))
     interp_xp = list(np.arange(0, input_mat.shape[0], src_fps / trg_fps))
     interp_mat = np.zeros(shape=(len(interp_xp), input_mat.shape[1]))

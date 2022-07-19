@@ -30,12 +30,13 @@ class SignMFCCDataModule(LightningDataModule):
         self,
         poses_dir: str,
         specto_dir: str,
+        test_poses_dir: str,
         train_pct: tuple = 0.8,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
         poses_src_fps: int = 30,
-        poses_target_fps: int = 101
+        poses_target_fps: int = 101,
     ):
         super().__init__()
 
@@ -79,7 +80,13 @@ class SignMFCCDataModule(LightningDataModule):
                 lengths=lengths,
                 generator=torch.Generator().manual_seed(42),
             )
-            self.data_test = self.data_val
+            self.data_test = load_sign_alphabet(
+                self.hparams.test_poses_dir,
+                self.hparams.specto_dir,
+                dataset_class=SignAlphabetMFCCDataset,
+                poses_src_fps=101,
+                poses_target_fps=101,
+            )
 
     def train_dataloader(self):
         return DataLoader(
