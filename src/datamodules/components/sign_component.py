@@ -108,7 +108,7 @@ class SignAlphabetMFCCDataset(Dataset):
     def __getitem__(self, idx) -> Tuple:
         hand_pose = self.poses[idx]
         label = self.labels[idx]
-        mel_coef = np.load(self.mfccs[label]).astype(np.float32).swapaxes(1, 2)
+        mel_coef = np.load(self.mfccs[label]).astype(np.float32)#.swapaxes(1, 2)
         return hand_pose, mel_coef, label
 
 

@@ -31,6 +31,24 @@ class LSTMLitModule(pl.LightningModule):
         self.save_hyperparameters(logger=False)
 
         self.net = net
+        # Workaround to load model mapped on GPU
+        # https://stackoverflow.com/a/61840832
+        waveglow = torch.hub.load(
+            "NVIDIA/DeepLearningExamples:torchhub",
+            "nvidia_waveglow",
+            model_math="fp32",
+            pretrained=False,
+        )
+        # checkpoint = torch.hub.load_state_dict_from_url(
+        #     "https://api.ngc.nvidia.com/v2/models/nvidia/waveglowpyt_fp32/versions/1/files/nvidia_waveglowpyt_fp32_20190306.pth",  # noqa: E501
+        #     progress=True,
+        #     # map_location=device,
+        # )
+        # state_dict = {key.replace("module.", ""): value for key, value in checkpoint["state_dict"].items()}
+
+        # self.waveglow.load_state_dict(state_dict)
+        self.waveglow = waveglow.remove_weightnorm(waveglow)
+        self.waveglow.eval()
 
         # loss function
         self.criterion = torch.nn.MSELoss()
@@ -44,12 +62,15 @@ class LSTMLitModule(pl.LightningModule):
         # for logging best so far validation accuracy
         self.val_loss_best = MinMetric()
 
-    def forward(self, x: torch.Tensor):
-        return self.net(x)
+    def forward(self, x: torch.Tensor, wav_output=False):
+        wav, y = None, self.net(x)
+        if wav_output:
+            wav = self.waveglow(y)
+        return self.net(x), wav
 
     def step(self, batch: Any):
         x, y, l = batch
-        y_hat = self.forward(x)
+        y_hat, _ = self.forward(x)
         loss = self.criterion(y_hat, y)
         return loss, y_hat, y
 
@@ -102,8 +123,10 @@ class LSTMLitModule(pl.LightningModule):
         See examples here:
             https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
         """
-        return torch.optim.Adam(
+        optimizer = torch.optim.Adam(
             params=self.parameters(),
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 100)
+        return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
