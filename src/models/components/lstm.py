@@ -24,11 +24,11 @@ class LSTM(nn.Module):
         self.fc_in_features = latent_dim * 2 if bidirectional else latent_dim
         self.fc = nn.Sequential(
             nn.Linear(in_features=self.fc_in_features, out_features=256),
-            nn.BatchNorm1d(101),
+            nn.BatchNorm1d(100),
             nn.LeakyReLU(0.2),
             nn.Linear(256, 128),
             nn.Dropout(p=0.5),
-            nn.BatchNorm1d(101),
+            nn.BatchNorm1d(100),
             nn.LeakyReLU(0.2),
             nn.Linear(128, 64),
         )

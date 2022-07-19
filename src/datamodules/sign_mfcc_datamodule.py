@@ -30,18 +30,17 @@ class SignMFCCDataModule(LightningDataModule):
         self,
         poses_dir: str,
         specto_dir: str,
-        train_val_test_split: Tuple[float, float, float] = (0.7, 0.2, 0.1),
+        train_pct: tuple = 0.8,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
+        poses_src_fps: int = 30,
+        poses_target_fps: int = 101
     ):
         super().__init__()
 
         # this line allows to access init params with 'self.hparams' attribute
         self.save_hyperparameters(logger=False)
-
-        # data transformations
-        self.transforms = transforms.Compose([ConvertImageDtype(torch.float32)])
 
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
@@ -57,30 +56,30 @@ class SignMFCCDataModule(LightningDataModule):
 
         # load datasets only if they're not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            trainset = load_sign_alphabet(
+            dataset = load_sign_alphabet(
                 self.hparams.poses_dir,
                 self.hparams.specto_dir,
                 dataset_class=SignAlphabetMFCCDataset,
-                transforms=self.transforms,
+                poses_src_fps=self.hparams.poses_src_fps,
+                poses_target_fps=self.hparams.poses_target_fps,
             )
             # TODO: When we get a test set we can load it separately in the same function
             # testset = load_sign_alphabet(
             #     self.hparams.data_dir, train=False, transform=self.transforms
             # )
             # dataset = ConcatDataset(datasets=[trainset, testset])
-            dataset = trainset
-            train_length = int(self.hparams.train_val_test_split[0] * len(dataset))
-            val_length = int(self.hparams.train_val_test_split[1] * len(dataset))
+            train_length = int(self.hparams.train_pct * len(dataset))
+            val_length = len(dataset) - train_length
             lengths = [
                 train_length,
                 val_length,
-                len(dataset) - (train_length + val_length),
             ]
-            self.data_train, self.data_val, self.data_test = random_split(
+            self.data_train, self.data_val = random_split(
                 dataset=dataset,
                 lengths=lengths,
                 generator=torch.Generator().manual_seed(42),
             )
+            self.data_test = None
 
     def train_dataloader(self):
         return DataLoader(
@@ -101,6 +100,7 @@ class SignMFCCDataModule(LightningDataModule):
         )
 
     def test_dataloader(self):
+        raise NotImplementedError()
         return DataLoader(
             dataset=self.data_test,
             batch_size=self.hparams.batch_size,

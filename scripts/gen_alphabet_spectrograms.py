@@ -10,6 +10,7 @@
 Generate one spectrogram per letter from a dataset of wav files.
 """
 
+import numpy as np
 import torchaudio
 import argparse
 import random
@@ -62,11 +63,11 @@ def wav_to_spectrogram(wav) -> torch.Tensor:
 
         return ((resig, sr))
 
-    def spectro_gram(aud, n_mels=80, n_fft=1024, hop_len=None):
+    def make_spectrogram(aud, n_mels=64, n_fft=1764, hop_len=441):
         """
         Taken from https://ketanhdoshi.github.io/Audio-Classification/
         """
-        aud = rechannel(aud, 2) # to stereo
+        aud = rechannel(aud, 1) # to mono
         sig, sr = aud
         top_db = 80
 
@@ -81,7 +82,7 @@ def wav_to_spectrogram(wav) -> torch.Tensor:
 
     audio = torchaudio.load(wav)
     audio = pad_trunc(audio, 1000)
-    return spectro_gram(audio)
+    return make_spectrogram(audio)
 
 
 def generate(wav_dir, spec_dir):
@@ -92,7 +93,8 @@ def generate(wav_dir, spec_dir):
         if not os.path.isfile(full_path):
             continue
         spec = wav_to_spectrogram(full_path)
-        save_image(spec, os.path.join(spec_dir, f"{file.split('.')[0]}.png"))
+        # save_image(spec, os.path.join(spec_dir, f"{file.split('.')[0]}.png"))
+        np.save(os.path.join(spec_dir, f"{file.split('.')[0]}.npy"), spec)
 
 
 if __name__ == "__main__":

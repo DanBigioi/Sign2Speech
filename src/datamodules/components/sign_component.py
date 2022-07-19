@@ -70,7 +70,7 @@ class SignAlphabetWaveformDataset(Dataset):
 
 class SignAlphabetSpectogramDataset(Dataset):
     def __init__(
-            self, poses, labels, spectograms, transforms=ConvertImageDtype(torch.float32)
+        self, poses, labels, spectograms, transforms=ConvertImageDtype(torch.float32)
     ):
         self.poses = poses
         self.labels = labels
@@ -92,8 +92,12 @@ class SignAlphabetSpectogramDataset(Dataset):
 
 
 class SignAlphabetMFCCDataset(Dataset):
-    def __init__(self, poses, labels, mfccs):
-        self.poses = poses
+    def __init__(self, poses, labels, mfccs, src_fps, target_fps):
+        self.poses = []
+        for pose in poses:
+            self.poses.append(interp_func(
+                np.load(pose).astype(np.float32), src_fps=src_fps, trg_fps=target_fps
+            ).astype(np.float32))
         self.labels = labels
         self.mfccs = mfccs
 
@@ -102,13 +106,11 @@ class SignAlphabetMFCCDataset(Dataset):
         return len(self.poses)
 
     def __getitem__(self, idx) -> Tuple:
-        # TODO: Memory pinning?
-        hand_pose = np.load(self.poses[idx]).astype(np.float32)
-        hand_pose = interp_func(hand_pose).astype(np.float32)
+        hand_pose = self.poses[idx]
         label = self.labels[idx]
-        mel_coef = np.load(self.mfccs[label]).astype(np.float32)
-
+        mel_coef = np.load(self.mfccs[label]).astype(np.float32).swapaxes(1, 2)
         return hand_pose, mel_coef, label
+
 
 def interp_func(input_mat, src_fps=30, trg_fps=101):
     xp = list(np.arange(0, input_mat.shape[0], 1))
@@ -117,6 +119,7 @@ def interp_func(input_mat, src_fps=30, trg_fps=101):
     for j in range(input_mat.shape[1]):
         interp_mat[:, j] = np.interp(interp_xp, xp, input_mat[:, j])
     return interp_mat
+
 
 def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
     """
@@ -145,7 +148,13 @@ def parse_numpy_dataset(root: str, verbose=False) -> Dict[str, str]:
 
 
 def load_sign_alphabet(
-        alphabet_dataset_path, gt_path, dataset_class: Dataset, transforms=None, train=True
+    alphabet_dataset_path,
+    gt_path,
+    dataset_class: Dataset,
+    transforms=None,
+    train=True,
+    poses_src_fps=None,
+    poses_target_fps=None,
 ) -> Dataset:
     """
     Load a Sign Alphabet dataset, split into training and validation or test sets, and return data
@@ -178,5 +187,7 @@ def load_sign_alphabet(
     elif dataset_class is SignAlphabetWaveformDataset:
         dataset = SignAlphabetWaveformDataset(poses, labels, gt)
     elif dataset_class is SignAlphabetMFCCDataset:
-        dataset = SignAlphabetMFCCDataset(poses, labels, gt)
+        dataset = SignAlphabetMFCCDataset(
+            poses, labels, gt, poses_src_fps, poses_target_fps
+        )
     return dataset

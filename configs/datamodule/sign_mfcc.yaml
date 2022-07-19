@@ -1,8 +1,10 @@
 _target_: src.datamodules.sign_mfcc_datamodule.SignMFCCDataModule
 
-poses_dir: ${data_dir}/train_poses # data_dir is specified in config.yaml
-specto_dir: ${data_dir}/mfcc
+poses_dir: ${data_dir}/SS_SEQ_2L_train_V1 # data_dir is specified in config.yaml
+specto_dir: ${data_dir}/spec
 batch_size: 64
-train_val_test_split: [0.7, 0.2, 0.1] # In percentages
+train_pct: 0.8 # % of taining data (val_pct = 1-train_pct)
 num_workers: 0
 pin_memory: False
+poses_src_fps: 10
+poses_target_fps: 100

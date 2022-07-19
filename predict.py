@@ -10,18 +10,36 @@
 Script to run single inference on a given input.
 """
 
+from torchvision.io import read_image, ImageReadMode, write_jpeg
 from src.models.autoencoder_module import AELitModule
 
 import numpy as np
 import torchaudio
+import argparse
 import torch
-import sys
+
+
+n_mels, n_fft, s_rate, hop_len = 64, 1764, 44100, 441
+
+def test_gt(input_path: str):
+    '''
+    Simple test (while waiting for a test set) to run inference on one pose.
+    '''
+    specto = torch.from_numpy(np.load(input_path).astype(np.float32))
+    print("Spectogram: ", specto.shape, specto.dtype)
+
+    mel_inverter = torchaudio.transforms.InverseMelScale(sample_rate=s_rate,
+            n_stft=(n_fft//2)+1, n_mels=n_mels)
+    griffin_limer = torchaudio.transforms.GriffinLim(n_fft=n_fft, hop_length=hop_len)
+    stft = mel_inverter(specto)
+    print("STFT spectogram: ", stft.shape)
+    pred_audio = griffin_limer(stft)
+    torchaudio.save("gt.wav", pred_audio, s_rate)
 
 
 def predict(input: str):
     # ckpt can be also a URL!
     CKPT_PATH = "models/last.ckpt"
-    n_fft, n_mels, s_rate = 1024, 80, 44100
 
     # load model from checkpoint
     # model __init__ parameters will be loaded from ckpt automatically
@@ -49,7 +67,11 @@ def predict(input: str):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <input>")
-        exit(1)
-    predict(sys.argv[1])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="Input file (pose numpy file for default mode, spectrogram numpy file for grount truth mode")
+    parser.add_argument("--ground_truth", required=False, action="store_true")
+    args = parser.parse_args()
+    if args.ground_truth:
+        test_gt(args.input)
+    else:
+        predict(args.input)
