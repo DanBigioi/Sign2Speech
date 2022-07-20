@@ -1,7 +1,7 @@
 _target_: src.models.lstm_module.LSTMLitModule
 lr: 0.001
 #weight_decay: 0.0005
-weight_decay: null
+weight_decay: 0
 
 net:
   _target_: src.models.components.lstm.LSTM

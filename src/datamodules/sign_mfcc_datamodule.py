@@ -75,20 +75,19 @@ class SignMFCCDataModule(LightningDataModule):
             train_length,
             val_length,
         ]
-        # if stage == "train" and not self.data_train and not self.data_val:
-            
-        self.data_train, self.data_val = random_split(
-            dataset=dataset,
-            lengths=lengths,
-            generator=torch.Generator().manual_seed(42),
-        )
-        # elif stage == "test"  and not self.data_test:
-        self.data_test = self.data_val
-        # load_sign_alphabet(
-        #     self.hparams.test_poses_dir,
-        #     self.hparams.specto_dir,
-        #     dataset_class=ISLDataset,
-        # )
+        if not self.data_train and not self.data_val:
+            self.data_train, self.data_val = random_split(
+                dataset=dataset,
+                lengths=lengths,
+                generator=torch.Generator().manual_seed(42),
+            )
+        elif not self.data_test:
+            self.data_test = self.data_val
+            # load_sign_alphabet(
+            #     self.hparams.test_poses_dir,
+            #     self.hparams.specto_dir,
+            #     dataset_class=ISLDataset,
+            # )
 
     def train_dataloader(self):
         return DataLoader(
@@ -111,6 +110,7 @@ class SignMFCCDataModule(LightningDataModule):
     def test_dataloader(self):
         return DataLoader(
             dataset=self.data_test,
+            # batch_size=1,  # For our per-sign MSE
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,

@@ -20,12 +20,12 @@ seed: 12345
 
 trainer:
   min_epochs: 10
-  max_epochs: 100
+  max_epochs: 150
   #gradient_clip_val: 0.5
 
 model:
   lr: 0.001
-  weight_decay: 5e-5
+  weight_decay: 0
   net:
     input_dim: 63
     latent_dim: 256
@@ -33,7 +33,7 @@ model:
     bidirectional: True
 
 datamodule:
-  batch_size: 16
+  batch_size: 64
 
 logger:
   wandb:

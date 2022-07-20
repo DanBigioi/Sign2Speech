@@ -59,9 +59,6 @@ class LSTMLitModule(pl.LightningModule):
         self.val_loss = MeanSquaredError()
         self.test_loss = MeanSquaredError()
 
-        # for logging best so far validation accuracy
-        self.val_loss_best = MinMetric()
-
     def forward(self, x: torch.Tensor, wav_output=False):
         wav, y = None, self.net(x)
         # if wav_output:
@@ -95,15 +92,10 @@ class LSTMLitModule(pl.LightningModule):
         return {"loss": loss, "preds": y_hat, "targets": y, "labels": l}
 
     def validation_epoch_end(self, outputs: List[Any]):
-        loss = self.val_loss.compute()
-        self.val_loss_best.update(loss)
-        self.log(
-            "val/loss_best", self.val_loss_best.compute(), on_epoch=True, prog_bar=True
-        )
+        pass
 
     def test_step(self, batch: Any, batch_idx: int):
         # TODO: SNR here
-        self.eval()
         loss, preds, targets, labels = self.step(batch)
         # log test metrics
         self.log("test/loss", loss, on_step=False, on_epoch=True)
@@ -142,7 +134,7 @@ class LSTMLitModule(pl.LightningModule):
         optimizer = torch.optim.Adam(
             params=self.parameters(),
             lr=self.hparams.lr,
-            # weight_decay=self.hparams.weight_decay,
+            weight_decay=self.hparams.weight_decay,
         )
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 100)
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 150)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
