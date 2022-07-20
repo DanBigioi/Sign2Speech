@@ -58,29 +58,24 @@ class SignMFCCDataModule(LightningDataModule):
         """
 
         # load datasets only if they're not loaded already
-        dataset = load_sign_alphabet(
-            self.hparams.poses_dir,
-            self.hparams.specto_dir,
-            dataset_class=SignAlphabetMFCCDataset,
-            poses_src_fps=self.hparams.poses_src_fps,
-            poses_target_fps=self.hparams.poses_target_fps,
-        )
-        # TODO: When we get a test set we can load it separately in the same function
-        # testset = load_sign_alphabet(
-        #     self.hparams.data_dir, train=False, transform=self.transforms
-        # )
-        # dataset = ConcatDataset(datasets=[trainset, testset])
-        train_length = int(self.hparams.train_pct * len(dataset))
-        val_length = len(dataset) - train_length
-        lengths = [
-            train_length,
-            val_length,
-        ]
         if (
             (stage == TrainerFn.FITTING or stage == TrainerFn.VALIDATING)
             and not self.data_train
             and not self.data_val
         ):
+            dataset = load_sign_alphabet(
+                self.hparams.poses_dir,
+                self.hparams.specto_dir,
+                dataset_class=SignAlphabetMFCCDataset,
+                poses_src_fps=self.hparams.poses_src_fps,
+                poses_target_fps=self.hparams.poses_target_fps,
+            )
+            train_length = int(self.hparams.train_pct * len(dataset))
+            val_length = len(dataset) - train_length
+            lengths = [
+                train_length,
+                val_length,
+            ]
             self.data_train, self.data_val = random_split(
                 dataset=dataset,
                 lengths=lengths,
