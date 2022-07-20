@@ -258,6 +258,7 @@ def load_sign_alphabet(
         gt += [speech_gt[label.upper()]]
 
     dataset = None
+    print("[*] Building dataset...")
     if dataset_class is SignAlphabetSpectogramDataset:
         dataset = SignAlphabetSpectogramDataset(
             poses, labels, gt, transforms=transforms

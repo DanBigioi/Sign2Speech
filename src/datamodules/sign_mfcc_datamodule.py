@@ -75,13 +75,18 @@ class SignMFCCDataModule(LightningDataModule):
             train_length,
             val_length,
         ]
-        if not self.data_train and not self.data_val:
+        if stage == "TrainerFn.FITTING" and not self.data_train and not self.data_val:
             self.data_train, self.data_val = random_split(
                 dataset=dataset,
                 lengths=lengths,
                 generator=torch.Generator().manual_seed(42),
             )
-        elif not self.data_test:
+        elif stage == "TrainerFn.TESTING" and not self.data_test:
+            self.data_train, self.data_val = random_split(
+                dataset=dataset,
+                lengths=lengths,
+                generator=torch.Generator().manual_seed(42),
+            )
             self.data_test = self.data_val
             # load_sign_alphabet(
             #     self.hparams.test_poses_dir,
