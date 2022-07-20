@@ -136,5 +136,5 @@ class LSTMLitModule(pl.LightningModule):
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 150)
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, 200)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
