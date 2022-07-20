@@ -109,8 +109,8 @@ class SignMFCCDataModule(LightningDataModule):
     def test_dataloader(self):
         return DataLoader(
             dataset=self.data_test,
-            # batch_size=1,  # For our per-sign MSE
-            batch_size=self.hparams.batch_size,
+            batch_size=1,  # For our per-sign MSE
+            # batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
